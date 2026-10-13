@@ -4,7 +4,7 @@
 
 Open Intelligent UI 是一套独立的交互 UI 协议 v0.1 和 TypeScript / React 参考实现。它将 Markdown 与受限组件 DSL 解析为可交互界面，用消息级状态保存输入，用宿主接口处理需要授权的动作。
 
-这是一个**本地实验项目**，尚未接入聊天网站或发布为 npm 包；它不声称兼容任何网站的私有协议。
+这是一个**本地实验项目**，包含基于保存页静态结构开发的 DeepSeek Chrome MV3 扩展；尚未在真实账号页面安装验证，也未发布为 npm 包。它不声称兼容任何网站的私有协议。
 
 ## 快速开始
 
@@ -53,7 +53,8 @@ npm run build       # 库、JSON Schema 和静态演示
 
 - `protocol/`：DSL 解析、结构校验、JSON Schema、受限表达式和消息状态；不依赖 React。
 - `ui/`：组件、渲染器与主题；`packages/react-ui/` 汇总公开的 React 导出。
-- `services/`：站点与宿主适配接口；目前只有合同，没有接入真实站点。
+- `services/`：站点适配、消息生命周期与独立渲染视图；请求拦截合同仍未配置。
+- `packages/chrome-extension/`：未打包 MV3 扩展装配；静态适配 DeepSeek 的助手正文，可手动加载验证。使用方法见[扩展说明](packages/chrome-extension/README.md)。
 
 项目内可以这样组合解析器与渲染器。以下相对路径以仓库根目录的入口文件为基准：
 
@@ -78,12 +79,13 @@ export function Demo() {
 
 注册表有 61 个名称，其中 **46 个有本地 React 参考映射**。本地图表支持折线、柱、散点和饼图，最多 100 条数据、4 个 series；这是基础实现，没有完整 Tooltip 或复杂轴配置。
 
-图片、地图、实体、引用、文件及 `WritingBlock` 等 **13 个宿主组件默认未配置**。`AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅本地样本，不接受任意生成的 HTML / JS。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。Chrome 扩展目前只有装配说明，尚未接入网站或账号。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
+图片、地图、实体、引用、文件及 `WritingBlock` 等 **13 个宿主组件默认未配置**。本地工作台的 `AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅样本；Chrome 扩展不配置 AppBlock 授权，因此聊天回复中的任意 HTML / JS 都不能运行。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。扩展只读已显示的 DeepSeek 助手正文，真实站点行为尚未验证。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
 
 ## 文档
 
 - [协议规范](docs/PROTOCOL.zh-CN.md) · [已捕获格式的证据与边界](docs/CAPTURED_FORMAT.zh-CN.md)
 - [兼容矩阵](docs/COMPATIBILITY.zh-CN.md) · [组件画廊说明](test/README.zh-CN.md)
+- [DeepSeek 扩展静态验证](docs/DEEPSEEK_EXTENSION.zh-CN.md) · [手动加载说明](packages/chrome-extension/README.md)
 - [模型提示词与 token 预算](docs/MODEL_PROMPT.zh-CN.md) · [本地验证记录](docs/VERIFICATION.zh-CN.md)
 
 两张配图均为仓库内可维护的 SVG 示意，不是浏览器截图。

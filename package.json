@@ -10,9 +10,11 @@
   },
   "scripts": {
     "dev": "vite --configLoader runner --host 127.0.0.1",
-    "build": "npm run build:lib && npm run schema && npm run build:playground",
+    "build": "npm run build:lib && npm run schema && npm run build:playground && npm run build:extension",
     "build:lib": "rm -rf dist/lib && tsc -p tsconfig.build.json",
     "build:playground": "vite build --configLoader runner",
+    "build:extension": "node packages/chrome-extension/build.mjs",
+    "verify:deepseek-snapshot": "npm run build:lib && node test/verify-deepseek-snapshot.mjs",
     "typecheck": "tsc --noEmit",
     "test": "npm run build:lib && tsx --test test/*.test.ts",
     "schema": "tsx protocol/export-schema.ts",
@@ -25,6 +27,9 @@
   },
   "devDependencies": {
     "@types/react": "19.3.0",
+    "@types/jsdom": "20.0.1",
+    "esbuild": "0.17.19",
+    "jsdom": "20.0.3",
     "tsx": "3.12.2",
     "typescript": "5.9.3",
     "vite": "7.3.6"

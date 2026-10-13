@@ -1,8 +1,22 @@
-import type { HostAdapter } from '../protocol/index.js';
-export type SiteMessage = { id:string; conversationId:string; text:string; revision:string };
+/** A site owns DOM discovery and text recovery. The shared renderer never knows its selectors. */
+export type StreamState = 'complete' | 'streaming' | 'unknown';
+
+export type SiteMessage = {
+  /** The site's message container; kept only while it is attached to this document. */
+  element: Element;
+  /** The exact assistant body to hide while the local preview is visible. */
+  body: Element;
+  /** Decoded protocol source, including meaningful rich-text line breaks. */
+  text: string;
+  /** Stable within one observed DOM message; adapters must state stronger guarantees explicitly. */
+  identity: string;
+  conversationId: string;
+  stream: StreamState;
+};
+
 export interface SiteAdapter {
-  readonly siteId:string;
-  observeMessages(onMessage:(message:SiteMessage)=>void):()=>void;
-  host:HostAdapter;
+  readonly siteId: string;
+  matches(url: URL): boolean;
+  findMessages(document: Document): Iterable<Element>;
+  readMessage(element: Element, url: URL): SiteMessage | null;
 }
-export const siteIntegrationStatus = { chromeExtension:'not-implemented', requestInterception:'not-implemented', liveAccounts:'not-connected' } as const;

@@ -45,7 +45,7 @@
 
 ## 宿主适配与安全
 
-`services/site-adapter.ts` 定义可观察消息 `{id,conversationId,text,revision}` 和 `HostAdapter`。`services/interception.ts` 是未配置合同，尚无站点 DOM 选择器、fetch 拦截、Chrome manifest 或账号授权。站点扩展未来应为每条消息创建实例，区分增量更新、重试和重生，并只把用户授权可见文本交给协议层。
+`services/site-adapter.ts` 定义站点适配器及消息正文合同，`services/adapter-registry.ts` 注册多站点适配器，`services/reply-coordinator.ts` 管理 DOM 观察、去重、实例与恢复；`services/reply-view.tsx` 独立装配 React 渲染。DeepSeek 的 DOM 识别与富文本还原仅在 `services/adapters/deepseek.ts`。当前 Chrome MV3 扩展只基于保存页静态证据适配 DeepSeek，尚未在真实账号页面验证；`services/interception.ts` 仍是未配置的请求拦截合同。每条有效回复使用独立运行时，完整更新保留状态，重新生成与会话切换重建实例。细节见 [DeepSeek 扩展验证记录](DEEPSEEK_EXTENSION.zh-CN.md)。
 
 `AppBlock`、`CodeBlock`、`WritingBlock` 可携带不递归的 `rawContent` 字符串；其结束标签须独占一行。`CodeBlock` 只按原文展示，`WritingBlock` 默认待宿主接入。`AppBlock` 需要用户点击后由 `HostAdapter.authorizeAppBlock` 返回已审阅 HTML；默认没有适配器时不创建 iframe。本地两份样本、CSP 和剩余安全边界见 [AppBlock 说明](APPBLOCK.zh-CN.md)。
 

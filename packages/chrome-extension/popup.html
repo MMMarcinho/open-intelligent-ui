@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="popup.css"><title>Open Intelligent UI</title></head>
+<body><main>
+  <h1>Open Intelligent UI <small id="build-version">版本读取中…</small></h1>
+  <label class="switch"><input id="enabled" type="checkbox"><span>总开关：替换有效协议回复</span></label>
+  <p id="status" role="status">正在检查当前页面…</p>
+  <section><h2>默认页面</h2><label class="switch"><input id="default-deepseek" type="checkbox"><span>DeepSeek 在线对话</span></label><code>https://chat.deepseek.com/*</code></section>
+  <section><h2>自定义页面规则</h2><div id="rules"></div>
+    <form id="add-rule"><label for="pattern">页面 URL / 路由（* 仅可用于路径之后）</label><input id="pattern" type="text" spellcheck="false" placeholder="file:///Users/me/Desktop/DeepSeek.html" required>
+      <label for="adapter">页面结构适配器</label><select id="adapter"><option value="deepseek">DeepSeek 回复结构（含保存页）</option></select>
+      <button type="submit">添加规则并请求所需站点权限</button></form>
+    <p id="notice" role="alert"></p>
+  </section>
+  <p class="note">本地文件还需在 Chrome 扩展详情中手动打开“允许访问文件网址”，再刷新文件页。自定义网站权限只在添加规则时由 Chrome 请求；本扩展不会替你批准。关闭总开关会恢复网页原文。扩展不发送消息或拦截请求。</p>
+</main><script src="popup.js"></script></body></html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Open Intelligent UI: folded page and control">
+  <!-- Reduced drawing for Chrome's smallest toolbar and settings size. -->
+  <rect x="3" y="3" width="122" height="122" rx="28" fill="#8CCFF7"/>
+  <path d="M26 20 75 17l29 24 3 65-83 5-3-84q0-6 5-7Z" fill="#FAF3E4" stroke="#173B5B" stroke-width="6" stroke-linejoin="round"/>
+  <path d="m75 17 2 25 27-1" fill="#E6DBC5" stroke="#173B5B" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m35 55 27-1M35 71l24-1" fill="none" stroke="#173B5B" stroke-width="8" stroke-linecap="round"/>
+  <rect x="68" y="60" width="26" height="31" rx="5" fill="#F4B743" stroke="#173B5B" stroke-width="5"/>
+  <path d="m75 76 5 5 8-11" fill="none" stroke="#173B5B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

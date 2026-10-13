@@ -79,8 +79,18 @@ function declaration(raw:string,start:number,end:number,diagnostics:Diagnostic[]
   if(derived)return {name:derived[1],expression:derived[2],state:false,span:{start,end}};
   diagnostics.push({code:'body_syntax',message:'仅允许 const 派生值或 DIL.useState 声明',span:{start,end},severity:'error'});return null;
 }
-function committed(nodes:Node[]):Node[]{return nodes.filter(n=>n.span.end>=0).map(n=>n.kind==='element'||n.kind==='if'||n.kind==='each'?{...n,children:committed(n.children)}:n);}
-export function parseDsl(source:string,messageId='preview',final=true):Document{
+function committed(nodes:Node[],openContainers=false):Node[]{
+  const result:Node[]=[];
+  for(const n of nodes){
+    if(n.kind==='element'||n.kind==='if'||n.kind==='each'){
+      const children=committed(n.children,openContainers);
+      if(n.span.end>=0)result.push({...n,children});
+      else if(openContainers&&children.length)result.push({...n,children});
+    }else if(n.span.end>=0)result.push(n);
+  }
+  return result;
+}
+export function parseDsl(source:string,messageId='preview',final=true,openContainers=false):Document{
   const diagnostics:Diagnostic[]=[],declarations:Declaration[]=[],children:Node[]=[];
   if(new TextEncoder().encode(source).length>limits.sourceBytes){return {protocol:'iui/0.1',messageId,declarations,children,diagnostics:[{code:'source_budget',message:'输入超过 200 KB',span:{start:0,end:source.length},severity:'error'}],complete:false};}
   const stack:{name:string;node:Node&{children:Node[]}}[]=[];
@@ -101,11 +111,11 @@ export function parseDsl(source:string,messageId='preview',final=true):Document{
     }
     if(source[i]==='\\'&&source[i+1]==='{'){i+=2;continue;}
     if(source.startsWith('{@body',i)){
-      const end=balanced(source,i);if(end<0){diagnostics.push({code:'incomplete_body',message:'状态声明未结束',span:{start:i,end:source.length},severity:'error'});break;}
+      const end=balanced(source,i);if(end<0){diagnostics.push({code:'incomplete_body',message:'状态声明未结束',span:{start:i,end:source.length},severity:openContainers?'warning':'error'});break;}
       flush(i);const d=declaration(source.slice(i+6,end-1),i,end,diagnostics);if(d)declarations.push(d);i=end;textStart=i;continue;
     }
     if(source.startsWith('{#if ',i)||source.startsWith('{#each ',i)){
-      const end=balanced(source,i);if(end<0){diagnostics.push({code:'incomplete_directive',message:'控制指令未结束',span:{start:i,end:source.length},severity:'error'});break;}
+      const end=balanced(source,i);if(end<0){diagnostics.push({code:'incomplete_directive',message:'控制指令未结束',span:{start:i,end:source.length},severity:openContainers?'warning':'error'});break;}
       flush(i);const raw=source.slice(i+2,end-1).trim();let node:Node|null=null;
       if(raw.startsWith('if '))node={kind:'if',test:raw.slice(3).trim(),children:[],span:{start:i,end:-1}};
       else {const m=/^each\s+([\s\S]+)\s+as\s+([\w$]+)(?:\s*,\s*([\w$]+))?$/.exec(raw);if(m)node={kind:'each',source:m[1],item:m[2],index:m[3],children:[],span:{start:i,end:-1}};}
@@ -120,7 +130,7 @@ export function parseDsl(source:string,messageId='preview',final=true):Document{
       i=end;textStart=i;continue;
     }
     if(source[i]==='<'&&/^<\/?[A-Za-z][\w-]*/.test(source.slice(i))){
-      const end=tagEnd(source,i);if(end<0){diagnostics.push({code:'incomplete_tag',message:'标签未结束',span:{start:i,end:source.length},severity:'error'});break;}
+      const end=tagEnd(source,i);if(end<0){diagnostics.push({code:'incomplete_tag',message:'标签未结束',span:{start:i,end:source.length},severity:openContainers?'warning':'error'});break;}
       const raw=source.slice(i+1,end-1),close=raw.startsWith('/'),name=/^\/?([A-Za-z][\w-]*)/.exec(raw)?.[1]||'';
       if(!componentNames.has(name)){
         i=!close&&!/\/\s*$/.test(raw)?opaqueEnd(source,end,name):end;
@@ -146,14 +156,19 @@ export function parseDsl(source:string,messageId='preview',final=true):Document{
     }
     if(stack.length>0&&source[i]==='{'&&!source.startsWith('{@',i)&&!source.startsWith('{#',i)){
       const end=balanced(source,i);if(end>i+2){const expr=source.slice(i+1,end-1).trim();if(expr&&!expr.startsWith('/')){flush(i);add({kind:'expression',source:expr,span:{start:i,end}});i=end;textStart=i;continue;}}
+      if(openContainers&&end<0){diagnostics.push({code:'incomplete_expression',message:'表达式未结束',span:{start:i,end:source.length},severity:'warning'});break;}
     }
+    if(openContainers&&source[i]==='{'&&balanced(source,i)<0){diagnostics.push({code:'incomplete_expression',message:'结构未结束',span:{start:i,end:source.length},severity:'warning'});break;}
+    if(openContainers&&(source.slice(i)==='<'||source.slice(i)==='</')){diagnostics.push({code:'incomplete_tag',message:'标签未结束',span:{start:i,end:source.length},severity:'warning'});break;}
     i++;
   }}catch(e){diagnostics.push({code:'resource_budget',message:String(e),span:{start:i,end:i},severity:'error'});}
   flush(i);
   if(i<source.length&&final){target.push({kind:'text',text:source.slice(i),span:{start:i,end:source.length}});}
   for(const entry of stack){diagnostics.push({code:'unclosed_tag',message:`未闭合 ${entry.name}`,span:{start:entry.node.span.start,end:source.length},severity:final?'error':'warning'});if(final)entry.node.span.end=source.length;}
-  return {protocol:'iui/0.1',messageId,declarations,children:final?children:committed(children),diagnostics,complete:final&&diagnostics.every(d=>d.severity!=='error')};
+  return {protocol:'iui/0.1',messageId,declarations,children:final?children:committed(children,openContainers),diagnostics,complete:final&&diagnostics.every(d=>d.severity!=='error')};
 }
+/** Preview only complete syntax and text inside open containers; never synthesize a closing token. */
+export function parseDslPreview(source:string,messageId='preview'):Document{return parseDsl(source,messageId,false,true);}
 export class StreamParser {
   private source=''; constructor(readonly messageId:string){}
   append(chunk:string,final=false):Document{this.source+=chunk;return parseDsl(this.source,this.messageId,final);}
