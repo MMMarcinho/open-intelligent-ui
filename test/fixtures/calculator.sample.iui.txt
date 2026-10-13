@@ -1,0 +1,49 @@
+{@body const [tokens,setTokens]=DIL.useState(100)}
+{@body const [inputPrice,setInputPrice]=DIL.useState(2)}
+{@body const [outputPrice,setOutputPrice]=DIL.useState(8)}
+{@body const [ratio,setRatio]=DIL.useState(30)}
+{@body const inputTokens=tokens*1000000*(1-ratio/100)}
+{@body const outputTokens=tokens*1000000*ratio/100}
+{@body const totalCost=(inputTokens*inputPrice+outputTokens*outputPrice)/1000000}
+<box border radius="2xl" padding={4} gap={3}>
+  <row align="center" justify="between">
+    <box gap={1}>
+      <title>LLM API Cost Simulator</title>
+      <caption>Token 成本模拟器 · 所有数据可调整</caption>
+    </box>
+    <badge>Local state</badge>
+  </row>
+  <box gap={1}>
+    <row justify="between">
+      **总 Token 数量**
+      <text weight="medium" tabularNums>{tokens}M</text>
+    </row>
+    <slider min={10} max={500} step={10} value={tokens} onChange={setTokens}/>
+  </box>
+  <box gap={1}>
+    <row justify="between">
+      **Output Token 占比**
+      <text weight="medium" tabularNums>{ratio}%</text>
+    </row>
+    <slider min={5} max={80} step={5} value={ratio} onChange={setRatio}/>
+  </box>
+  <grid columns={2} gap={3}>
+    <grid-item>
+      <box gap={1}>
+        <label>Input / 1M tokens ($)</label>
+        <input inputType="number" value={String(inputPrice)} onChange={v=>setInputPrice(Math.max(0,Number(v)||0))}/>
+      </box>
+    </grid-item>
+    <grid-item>
+      <box gap={1}>
+        <label>Output / 1M tokens ($)</label>
+        <input inputType="number" value={String(outputPrice)} onChange={v=>setOutputPrice(Math.max(0,Number(v)||0))}/>
+      </box>
+    </grid-item>
+  </grid>
+  <box background="surface-secondary" padding={3} radius="xl" gap={1}>
+    <caption>估算总费用</caption>
+    <title size="2xl" color="default" tabularNums>${totalCost.toLocaleString("en-US",{maximumFractionDigits:2})}</title>
+    <text color="secondary" size="xs">Input {(inputTokens/1e6).toFixed(1)}M · Output {(outputTokens/1e6).toFixed(1)}M</text>
+  </box>
+</box>

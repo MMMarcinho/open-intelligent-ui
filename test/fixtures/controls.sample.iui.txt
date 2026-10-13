@@ -1,0 +1,62 @@
+{@body const [demoText,setDemoText]=DIL.useState("Hello Intelligent UI")}
+{@body const [demoNotes,setDemoNotes]=DIL.useState("")}
+{@body const [demoSelect,setDemoSelect]=DIL.useState("react")}
+{@body const [demoCheck,setDemoCheck]=DIL.useState(true)}
+{@body const [demoRadio,setDemoRadio]=DIL.useState("medium")}
+{@body const [demoSegment,setDemoSegment]=DIL.useState("preview")}
+{@body const [demoSlider,setDemoSlider]=DIL.useState(65)}
+{@body const [demoDate,setDemoDate]=DIL.useState("2026-10-30")}
+{@body const [clickCount,setClickCount]=DIL.useState(0)}
+<box border radius="xl" padding={3} gap={3}>
+  <row align="center" justify="between">
+    **Interactive Components**
+    <badge>Live</badge>
+  </row>
+  <box gap={1}>
+    <label>Input — 单行输入</label>
+    <input value={demoText} onChange={setDemoText}/>
+    <caption>当前值：{demoText}</caption>
+  </box>
+  <box gap={1}>
+    <label>Textarea — 多行输入</label>
+    <textarea rows={2} placeholder="输入一些内容..." value={demoNotes} onChange={setDemoNotes}/>
+  </box>
+  <box gap={1}>
+    <label>Select — 下拉选择</label>
+    <select block value={demoSelect} onChange={setDemoSelect} options={[{label:"React",value:"react"},{label:"Vue",value:"vue"},{label:"Svelte",value:"svelte"}]}/>
+  </box>
+  <checkbox checked={demoCheck} onChange={setDemoCheck} lineThrough={false}>Checkbox — 启用高级功能</checkbox>
+  <box gap={2}>
+    <label>Radio Group — 单选</label>
+    <radio-group direction="row" value={demoRadio} onChange={setDemoRadio}>
+      <radio value="low">Low</radio>
+      <radio value="medium">Medium</radio>
+      <radio value="high">High</radio>
+    </radio-group>
+  </box>
+  <box gap={2}>
+    <label>Segmented Control — 分段控制</label>
+    <segmented-control block={false} value={demoSegment} onChange={setDemoSegment} options={[{label:"Preview",value:"preview"},{label:"Code",value:"code"},{label:"Data",value:"data"}]}/>
+  </box>
+  <box gap={2}>
+    <row justify="between">
+      <label>Slider — 滑块</label>
+      <text tabularNums weight="medium">{demoSlider}%</text>
+    </row>
+    <slider min={0} max={100} step={5} value={demoSlider} onChange={setDemoSlider}/>
+  </box>
+  <box gap={1}>
+    <label>Date Picker — 日期选择</label>
+    <date-picker block value={demoDate} onChange={setDemoDate}/>
+  </box>
+  <row align="center" gap={2}>
+    <button color="primary" onClick={()=>setClickCount(v=>v+1)}>Button · Click {clickCount}</button>
+    <button variant="outline" color="secondary" onClick={()=>{setClickCount(0);setDemoSlider(65)}}>Reset</button>
+    <button variant="ghost" color="secondary" onClick={()=>GenUI.copy(demoText)}><icon name="copy" inline/> Copy</button>
+  </row>
+  <box background="surface-secondary" padding={3} radius="lg" gap={1}>
+    <text size="xs" color="secondary" weight="medium">当前状态摘要</text>
+    <text size="sm">Framework: {demoSelect} · Effort: {demoRadio} · Mode: {demoSegment}</text>
+    <text size="sm">Advanced: {demoCheck?"Enabled":"Disabled"} · Date: {demoDate||"未选择"}</text>
+  </box>
+</box>

@@ -1,0 +1,13 @@
+
+Additional guidance for common answers:
+- Prefer one compact UI after a brief Markdown explanation. Use local state for sliders, forms, filters, tabs and chart range changes; do not ask the model again for purely local recomputation.
+- Bind controlled inputs: input/textarea/select value={state} onChange={setState}; checkbox checked={state} onChange={setState}; slider min={0} max={100} step={1} value={state} onChange={setState}. radio-group holds radio children with value props; segmented-control takes options={[{label:"All",value:"all"}]}.
+- Use stable item IDs as key in each loops. Derived declarations follow the states they read and are recomputed after state changes. Keep data arrays bounded and do not invent a source for displayed figures.
+- Host actions belong in an explicit button onClick, e.g. onClick={()=>GenUI.copy("text")}; they may be rejected or require confirmation. Do not fire them during rendering or claim success.
+- Chart content supports line, bar, scatter and pie. For line/bar/scatter, xKey names a field in each data row; each series dataKey names a numeric field. For pie, use nameKey and valueKey. The local renderer has basic axes/legend, not full tooltips or complex chart styling.
+
+Chart example (simulated data; omit this label in the actual answer):
+{@body const [range,setRange]=DIL.useState("all")}
+{@body const rows=[{x:"A",y:2},{x:"B",y:4}]}
+{@body const shown=range==="last"?rows.slice(-1):rows}
+<box padding={3} gap={2}><caption>Simulated scores</caption><segmented-control value={range} onChange={setRange} options={[{label:"All",value:"all"},{label:"Last",value:"last"}]}/><Chart content={{chartType:"bar",xKey:"x",series:[{dataKey:"y",label:"Score"}],data:shown}}/></box>

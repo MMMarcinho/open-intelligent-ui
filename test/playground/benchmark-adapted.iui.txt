@@ -1,0 +1,63 @@
+{@body const agents=[{name:"Claude Code",success:91,cost:2.8,latency:84},{name:"Codex",success:88,cost:1.9,latency:105},{name:"DeepSeek Agent",success:81,cost:0.7,latency:142},{name:"Pi Agent",success:84,cost:1.2,latency:96}]}
+{@body const [mode,setMode]=DIL.useState("balanced")}
+{@body const [quality,setQuality]=DIL.useState(50)}
+{@body const [selected,setSelected]=DIL.useState("Claude Code")}
+{@body const weights=mode==="quality"?[75,15,10]:mode==="cost"?[25,65,10]:mode==="speed"?[25,10,65]:[quality,(100-quality)*0.55,(100-quality)*0.45]}
+{@body const scored=agents.map(a=>({...a,score:a.success/100*weights[0]+(1-a.cost/3.5)*weights[1]+(1-a.latency/180)*weights[2]})).sort((a,b)=>b.score-a.score)}
+{@body const current=agents.find(a=>a.name===selected)}
+<box border radius="2xl" padding={4} gap={4}>
+  <row align="center" justify="between" wrap="wrap">
+    <box gap={1}>
+      <title size="xl">Code Agent Evaluation Lab</title>
+      <caption>交互式评测面板 · 模拟数据 · 根据受污染样本改编</caption>
+    </box>
+    <badge color="success">Local interaction</badge>
+  </row>
+  <grid columns={3} gap={2}>
+    <grid-item><card><caption>参评模型</caption><title size="xl">4</title></card></grid-item>
+    <grid-item><card><caption>最高成功率</caption><title size="xl">91%</title></card></grid-item>
+    <grid-item><card><caption>当前领先</caption><text weight="semibold">{scored[0].name}</text></card></grid-item>
+  </grid>
+  <divider/>
+  <box gap={2}>
+    <label>评测策略</label>
+    <radio-group direction="row" value={mode} onChange={setMode}>
+      <radio value="balanced">自定义</radio>
+      <radio value="quality">质量优先</radio>
+      <radio value="cost">成本优先</radio>
+      <radio value="speed">速度优先</radio>
+    </radio-group>
+    {#if mode==="balanced"}
+      <row align="center" justify="between"><text>成功率权重</text><text weight="bold">{quality}%</text></row>
+      <slider min={0} max={100} step={5} value={quality} onChange={setQuality}/>
+    {/if}
+    <caption>权重：成功率 {Math.round(weights[0])}% · 成本 {Math.round(weights[1])}% · 速度 {Math.round(weights[2])}%</caption>
+  </box>
+  <divider/>
+  <row align="center" justify="between"><title size="md">动态综合排名</title><caption>点击任一模型查看详情</caption></row>
+  <box gap={1}>
+    {#each scored as a,i}
+      <pressable key={a.name} onClick={()=>setSelected(a.name)} border radius="lg" padding={2} background={selected===a.name?"surface-secondary":"surface"}>
+        <row align="center" gap={2}>
+          <badge>{i+1}</badge>
+          <box flex="1" gap={1}>
+            <row justify="between"><text weight="semibold">{a.name}</text><text tabularNums>{a.score.toFixed(1)} / 100</text></row>
+            <box background="surface-tertiary" height="8px" radius="full" clip><box background="primary" height="100%" width={`${a.score}%`} radius="full"/></box>
+          </box>
+          <icon name="chevron-right"/>
+        </row>
+      </pressable>
+    {/each}
+  </box>
+  <box background="surface-secondary" padding={3} radius="lg" gap={2}>
+    <row justify="between" align="center"><title size="md">{selected}</title><badge>模型详情</badge></row>
+    <grid columns={3} gap={2}>
+      <grid-item><caption>成功率</caption><text weight="bold">{current.success}%</text></grid-item>
+      <grid-item><caption>单任务成本</caption><text weight="bold">${current.cost}</text></grid-item>
+      <grid-item><caption>平均延迟</caption><text weight="bold">{current.latency}s</text></grid-item>
+    </grid>
+  </box>
+  <Chart content={{chartType:"bar",xKey:"name",series:[{dataKey:"score",label:"综合分"}],yAxisMin:0,yAxisMax:100,data:scored}}/>
+  <button variant="outline" onClick={()=>GenUI.copy(JSON.stringify({mode,ranking:scored.map(a=>({name:a.name,score:a.score}))},null,2))}><icon name="copy" inline/> 复制当前排名 JSON</button>
+  <caption>评分仅演示状态、排序与渲染联动，不代表真实模型表现。</caption>
+</box>

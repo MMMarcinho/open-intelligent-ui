@@ -1,0 +1,17 @@
+{@body const [range,setRange]=DIL.useState("all")}
+{@body const points=[{x:"W1",success:58,baseline:55},{x:"W2",success:63,baseline:58},{x:"W3",success:61,baseline:62},{x:"W4",success:69,baseline:64},{x:"W5",success:74,baseline:66},{x:"W6",success:78,baseline:70},{x:"W7",success:77,baseline:72},{x:"W8",success:85,baseline:74}]}
+{@body const visible=range==="recent"?points.slice(-4):points}
+<box border radius="2xl" padding={4} gap={3}>
+  <row align="center" justify="between">
+    <box gap={1}>
+      <title>Agent Benchmark Trends</title>
+      <caption>模拟数据 · 8 周任务成功率</caption>
+    </box>
+    <segmented-control size="md" value={range} onChange={setRange} options={[{label:"8 周",value:"all"},{label:"4 周",value:"recent"}]}/>
+  </row>
+  <Chart content={{"chartType":"line","xKey":"x","series":[{"dataKey":"success","label":"Agent A","valueSuffix":"%"},{"dataKey":"baseline","label":"Baseline","valueSuffix":"%"}],"yAxisMin":0,"yAxisMax":100,"data":visible}}/>
+  <row align="center" justify="between">
+    <text color="secondary" size="sm">当前 Agent A 成功率</text>
+    <title size="lg" tabularNums>{visible[visible.length-1].success}%</title>
+  </row>
+</box>

@@ -1,0 +1,43 @@
+{@body const [framework,setFramework]=DIL.useState("react")}
+{@body const [scenario,setScenario]=DIL.useState("chatbot")}
+{@body const [features,setFeatures]=DIL.useState(["virtual"])}
+{@body const [details,setDetails]=DIL.useState("")}
+<box border radius="2xl" padding={4} gap={3}>
+  <row align="center" justify="between">
+    <title>Frontend Task Builder</title>
+    <badge>Form + Action</badge>
+  </row>
+  <box gap={1}>
+    <label>技术框架</label>
+    <radio-group direction="row" value={framework} onChange={setFramework}>
+      <radio value="react">React</radio>
+      <radio value="vue">Vue</radio>
+      <radio value="vanilla">原生 JS</radio>
+    </radio-group>
+  </box>
+  <box gap={1}>
+    <label>开发场景</label>
+    <select block value={scenario} onChange={setScenario} options={[{value:"chatbot",label:"Chatbot 消息列表"},{value:"dashboard",label:"数据分析 Dashboard"},{value:"editor",label:"富文本编辑器"}]}/>
+  </box>
+  <box gap={2}>
+    <label>功能要求</label>
+    {#each [{id:"virtual",name:"虚拟滚动"},{id:"responsive",name:"响应式布局"},{id:"streaming",name:"流式更新"},{id:"test",name:"自动化测试"}] as f}
+      <checkbox key={f.id} checked={features.includes(f.id)} onChange={v=>setFeatures(old=>v?[...old,f.id]:old.filter(x=>x!==f.id))} lineThrough={false}>{f.name}</checkbox>
+    {/each}
+  </box>
+  {#if features.includes("virtual")}
+    <box background="surface-secondary" radius="lg" padding={3} gap={1}>
+      <row align="center" gap={2}>
+        <icon name="info" color="info"/>
+        <text weight="medium" size="sm">虚拟滚动注意事项</text>
+      </row>
+      <text size="sm">建议考虑动态消息高度、滚动锚点、历史消息加载与流式内容高度变化。</text>
+    </box>
+  {/if}
+  <box gap={1}>
+    <label>补充要求</label>
+    <textarea rows={2} placeholder="例如：不使用第三方虚拟列表库" value={details} onChange={setDetails}/>
+  </box>
+  <button block onClick={()=>GenUI.issueNewTurn(`请使用 ${framework} 实现${{chatbot:"Chatbot 消息列表",dashboard:"数据分析 Dashboard",editor:"富文本编辑器"}[scenario]}，要求：${features.join("、")||"基础功能"}。补充要求：${details||"代码结构清晰，关键逻辑加注释"}。`)}>生成开发方案 <icon name="arrow-right" inline/></button>
+  <caption>点击后会将当前表单状态转换为新的对话请求。</caption>
+</box>

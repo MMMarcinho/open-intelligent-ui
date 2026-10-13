@@ -1,0 +1,190 @@
+<AppBlock
+  title="Mini App · 交互式画板"
+  icon="app-chatgpt"
+  app_block_id="paint-demo-01"
+  variant="inline"
+>
+<div id="paintapp" style="font-family:system-ui;padding:14px;color:var(--viz-text)">
+<style>
+#paintapp .tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+#paintapp button {
+  border: 1px solid var(--viz-border);
+  background: var(--viz-card);
+  color: var(--viz-text);
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#paintapp button.active {
+  background: var(--viz-accent-bg);
+  border-color: var(--viz-accent);
+}
+
+#paintapp canvas {
+  width: 100%;
+  height: 260px;
+  touch-action: none;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  cursor: crosshair;
+}
+
+#paintapp .swatch {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 50%;
+}
+</style>
+
+<div class="tools">
+  <button
+    class="swatch active"
+    data-color="#202020"
+    style="background:#202020"
+  ></button>
+
+  <button
+    class="swatch"
+    data-color="#3b82f6"
+    style="background:#3b82f6"
+  ></button>
+
+  <button
+    class="swatch"
+    data-color="#ef4444"
+    style="background:#ef4444"
+  ></button>
+
+  <button
+    class="swatch"
+    data-color="#16a34a"
+    style="background:#16a34a"
+  ></button>
+
+  <label style="font-size:12px">
+    笔刷
+    <input
+      type="range"
+      min="2"
+      max="25"
+      value="5"
+      id="brush"
+    >
+  </label>
+
+  <button id="clear">清空</button>
+</div>
+
+<canvas id="paintCanvas"></canvas>
+
+<div style="font-size:12px;opacity:.65;margin-top:8px">
+  鼠标或触屏拖动即可绘画
+</div>
+
+<script>
+(function() {
+  const root = document.getElementById('paintapp');
+  const canvas = root.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let color = '#202020';
+  let size = 5;
+  let drawing = false;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+
+    const old = document.createElement('canvas');
+    old.width = canvas.width;
+    old.height = canvas.height;
+
+    old.getContext('2d').drawImage(canvas, 0, 0);
+
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+
+    ctx.setTransform(
+      devicePixelRatio, 0,
+      0, devicePixelRatio,
+      0, 0
+    );
+
+    ctx.drawImage(old, 0, 0, rect.width, rect.height);
+  }
+
+  resize();
+
+  root.querySelectorAll('[data-color]').forEach(b => {
+    b.onclick = () => {
+      color = b.dataset.color;
+
+      root.querySelectorAll('[data-color]').forEach(
+        x => x.classList.remove('active')
+      );
+
+      b.classList.add('active');
+    };
+  });
+
+  root.querySelector('#brush').oninput = e => {
+    size = Number(e.target.value);
+  };
+
+  root.querySelector('#clear').onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  function point(e) {
+    const r = canvas.getBoundingClientRect();
+
+    return [
+      e.clientX - r.left,
+      e.clientY - r.top
+    ];
+  }
+
+  canvas.onpointerdown = e => {
+    drawing = true;
+    canvas.setPointerCapture(e.pointerId);
+
+    const [x, y] = point(e);
+
+    ctx.beginPath();
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  canvas.onpointermove = e => {
+    if (!drawing) return;
+
+    const [x, y] = point(e);
+
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  };
+
+  canvas.onpointerup = canvas.onpointercancel = () => {
+    drawing = false;
+  };
+})();
+</script>
+</div>
+</AppBlock>

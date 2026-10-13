@@ -1,0 +1,15 @@
+# Local dependencies, including the temporary symlink used for this Mac's offline validation.
+/node_modules
+
+# Generated build output and Vite cache.
+/.vite-cache/
+/dist/
+*.tsbuildinfo
+
+.DS_Store
+
+# Private source texts and acquisition metadata stay on this Mac.
+/test/fixtures/*.raw.*
+/test/fixtures/*.reference.txt
+/test/fixtures/*.provenance.json
+/test/fixtures/provenance.json

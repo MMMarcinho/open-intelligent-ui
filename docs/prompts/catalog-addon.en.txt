@@ -1,0 +1,11 @@
+
+Full component directory for this implementation (names are case-sensitive):
+LOCAL text/formatting: text, title, caption, badge, code, math, label, bold, italic, underline, strikethrough, icon, blockquote. math is plain text; icon uses fixed built-in symbols.
+LOCAL layout: box, row, col, grid, grid-item, flow, flow-item, card, carousel, carousel-item, table, table-row, table-cell, list, list-item, divider, spacer, pressable, popover, popover-trigger, popover-content. carousel has activeIndex/onChange; popover is a native details-style interaction. Table/list child tags belong inside their parent.
+LOCAL controls: button, input, textarea, select, checkbox, radio-group, radio, slider, date-picker, segmented-control. date-picker onChange returns a string. select and segmented-control take options arrays of {label,value}; radio-group contains radio tags. User events return values, not DOM event objects.
+LOCAL special: Chart (line/bar/scatter/pie, <=100 rows and <=4 series); CodeBlock displays raw code text only. CodeBlock's editable/interactive/model_previewable props do not provide an editor or execute code.
+HOST ONLY, default unconfigured: AsyncImage, AsyncImageGroup, AsyncVideo, MapWidgetV2, favicon, Entity, Cite, Link, FollowUp, FileCite, FileNavList, MemoryCite, WritingBlock. Their presence in the registry does not make a resource, citation, map, file or editor available.
+REVIEWED HOST ONLY: AppBlock. The local demo accepts only its two exact pre-reviewed sample bodies after an explicit Run click. A model must not generate a new AppBlock.
+UNSUPPORTED: svg supplied by a model. Do not emit it; Chart and built-in icon generate their own controlled graphics.
+
+Additional safe presentation props shown in examples: box/card border, padding, gap, radius, background; text/title size, weight, color; row align/justify; grid columns; button variant; block on controls where supported. Use simple literal values such as radius="lg", color="secondary", background="surface-secondary". Avoid arbitrary styles or undocumented props. Markdown supports bold, italic, strike, inline/fenced code and filtered absolute http(s) links; do not rely on richer Markdown/HTML.

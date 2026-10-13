@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "dist/lib",
+    "declaration": true
+  },
+  "include": ["protocol", "ui", "services", "packages"],
+  "exclude": ["protocol/export-schema.ts"]
+}

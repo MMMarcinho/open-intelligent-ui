@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="266" viewBox="0 0 900 266" role="img" aria-labelledby="title desc">
+  <title id="title">Open Intelligent UI 数据流</title>
+  <desc id="desc">Markdown 与 DSL 文本经流式解析、AST 校验、安全运行时，再由 React 渲染；宿主动作需要单独授权。</desc>
+  <rect x=".5" y=".5" width="899" height="265" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="24" y="35" fill="#57606a" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" font-weight="600">数据流 / v0.1</text>
+
+  <g fill="#f6f8fa" stroke="#d0d7de">
+    <rect x="24" y="65" width="148" height="98" rx="6"/>
+    <rect x="200" y="65" width="148" height="98" rx="6"/>
+    <rect x="376" y="65" width="148" height="98" rx="6"/>
+    <rect x="552" y="65" width="148" height="98" rx="6"/>
+    <rect x="728" y="65" width="148" height="98" rx="6"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" fill="#1f2328">
+    <text x="39" y="98" font-size="16" font-weight="600">模型文本</text>
+    <text x="39" y="131" font-size="13" fill="#57606a">Markdown + DSL</text>
+    <text x="215" y="98" font-size="16" font-weight="600">流式解析</text>
+    <text x="215" y="131" font-size="13" fill="#57606a">未闭合时诊断</text>
+    <text x="391" y="98" font-size="16" font-weight="600">AST 校验</text>
+    <text x="391" y="131" font-size="13" fill="#57606a">结构与白名单</text>
+    <text x="567" y="98" font-size="16" font-weight="600">安全运行时</text>
+    <text x="567" y="131" font-size="13" fill="#57606a">表达式与状态</text>
+    <text x="743" y="98" font-size="16" font-weight="600">React 渲染</text>
+    <text x="743" y="131" font-size="13" fill="#57606a">组件与主题</text>
+  </g>
+  <g stroke="#8c959f" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M178 114h15m-6-5 6 5-6 5"/>
+    <path d="M354 114h15m-6-5 6 5-6 5"/>
+    <path d="M530 114h15m-6-5 6 5-6 5"/>
+    <path d="M706 114h15m-6-5 6 5-6 5"/>
+    <path d="M626 164v35"/>
+  </g>
+  <rect x="24" y="199" width="852" height="42" rx="6" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="41" y="225" fill="#24292f" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="14"><tspan font-weight="600">HostAdapter</tspan><tspan fill="#57606a">　动作与资源由宿主授权；默认不发送消息、不连接真实资源</tspan></text>
+</svg>

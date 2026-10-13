@@ -1,0 +1,81 @@
+<AppBlock title="俄罗斯方块" icon="app-chatgpt" variant="inline" app_block_id="tetris-game-2026">
+<div id="tetris-root" class="w-full flex flex-col items-center gap-3 p-2 text-base">
+  <style>
+    #tetris-root .game-area{display:flex;gap:12px;justify-content:center;align-items:flex-start;width:100%}
+    #tetris-root canvas{display:block;max-width:100%;border-radius:8px}
+    #tetris-root .ctrl{border:1px solid var(--viz-border);background:var(--viz-card);border-radius:12px;min-height:49px;touch-action:none;font-size:19px;font-weight:600}
+    #tetris-root .ctrl:active{background:var(--viz-accent-bg)}
+    #tetris-root .stat{padding:8px;border-radius:10px;background:var(--viz-panel);text-align:center}
+  </style>
+  <div class="flex items-center justify-between w-full max-w-[390px]">
+    <div class="font-semibold text-sm">BLOCKS / 俄罗斯方块</div>
+    <div id="t-status" class="text-xs text-[var(--viz-muted)]">准备开始</div>
+  </div>
+  <div class="game-area">
+    <div class="relative" style="width:min(62vw,240px);flex-shrink:0">
+      <canvas id="t-board" width="240" height="480" style="width:100%;background:#101724"></canvas>
+      <div id="t-overlay" class="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg" style="background:#101724cf;color:white">
+        <div id="t-message" class="font-bold text-xl">俄罗斯方块</div>
+        <button id="t-start" class="px-5 py-2 rounded-lg font-semibold text-sm" style="background:#8b8cf5;color:#fff">开始游戏</button>
+      </div>
+    </div>
+    <div class="flex flex-col gap-2 flex-1 min-w-0" style="max-width:120px">
+      <div class="stat"><div class="text-xs text-[var(--viz-muted)]">得分</div><div id="t-score" class="font-bold text-xl tabular-nums">0</div></div>
+      <div class="stat"><div class="text-xs text-[var(--viz-muted)]">消除行数</div><div id="t-lines" class="font-bold text-lg tabular-nums">0</div></div>
+      <div class="stat"><div class="text-xs text-[var(--viz-muted)]">等级</div><div id="t-level" class="font-bold text-lg tabular-nums">1</div></div>
+      <div class="stat"><div class="text-xs text-[var(--viz-muted)] mb-1">下一个</div><canvas id="t-next" width="88" height="88" style="width:100%;max-width:88px;margin:auto"></canvas></div>
+      <button id="t-pause" class="ctrl text-sm">暂停</button>
+      <button id="t-reset" class="ctrl text-sm">重开</button>
+    </div>
+  </div>
+  <div class="grid grid-cols-4 gap-2 w-full max-w-[390px]">
+    <button class="ctrl" data-move="left" aria-label="向左">←</button>
+    <button class="ctrl" data-move="rotate" aria-label="旋转">↻</button>
+    <button class="ctrl" data-move="right" aria-label="向右">→</button>
+    <button class="ctrl" data-move="down" aria-label="向下">↓</button>
+    <button class="ctrl col-span-4 text-sm" data-move="drop">⤓　直接落到底部</button>
+  </div>
+  <div class="text-xs text-[var(--viz-muted)] text-center">键盘：← → 移动 · ↑ 旋转 · ↓ 加速 · 空格直接落下 · P 暂停</div>
+</div>
+<script>
+(function(){
+const root=document.getElementById('tetris-root');
+if(root.dataset.ready)return;root.dataset.ready='1';
+const boardCanvas=root.querySelector('#t-board'),ctx=boardCanvas.getContext('2d'),nextCtx=root.querySelector('#t-next').getContext('2d');
+const shapes=[
+[[1,1,1,1]],
+[[1,1],[1,1]],
+[[0,1,0],[1,1,1]],
+[[0,1,1],[1,1,0]],
+[[1,1,0],[0,1,1]],
+[[1,0,0],[1,1,1]],
+[[0,0,1],[1,1,1]]
+];
+const colors=['#36c9e8','#e9c95d','#ae85f4','#55cf9b','#ed7482','#648ff5','#f0a45d'];
+let board,active,next,score,lines,level,running=false,paused=false,last=0,acc=0,raf=0,bag=[];
+const $=s=>root.querySelector(s);
+function piece(){if(!bag.length){bag=[0,1,2,3,4,5,6];for(let i=bag.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]]}}let id=bag.pop();return {id,m:shapes[id].map(r=>r.slice()),x:0,y:0}}
+function spawn(){active=next||piece();next=piece();active.x=Math.floor((10-active.m[0].length)/2);active.y=0;if(hit(active.m,active.x,active.y))finish();drawNext()}
+function hit(m,x,y){return m.some((r,dy)=>r.some((v,dx)=>v&&(x+dx<0||x+dx>=10||y+dy>=20||(y+dy>=0&&board[y+dy][x+dx]!==-1))))}
+function cell(c,x,y,size,v){if(v<0)return;c.fillStyle=colors[v];c.fillRect(x*size+1,y*size+1,size-2,size-2);c.fillStyle='rgba(255,255,255,.18)';c.fillRect(x*size+2,y*size+2,size-4,3)}
+function draw(){ctx.fillStyle='#101724';ctx.fillRect(0,0,240,480);ctx.strokeStyle='#243044';ctx.lineWidth=.6;for(let x=0;x<=10;x++){ctx.beginPath();ctx.moveTo(x*24,0);ctx.lineTo(x*24,480);ctx.stroke()}for(let y=0;y<=20;y++){ctx.beginPath();ctx.moveTo(0,y*24);ctx.lineTo(240,y*24);ctx.stroke()}board.forEach((r,y)=>r.forEach((v,x)=>cell(ctx,x,y,24,v)));if(active){let gy=active.y;while(!hit(active.m,active.x,gy+1))gy++;ctx.globalAlpha=.23;active.m.forEach((r,y)=>r.forEach((v,x)=>{if(v)cell(ctx,active.x+x,gy+y,24,active.id)}));ctx.globalAlpha=1;active.m.forEach((r,y)=>r.forEach((v,x)=>{if(v)cell(ctx,active.x+x,active.y+y,24,active.id)}))}}
+function drawNext(){nextCtx.clearRect(0,0,88,88);if(!next)return;let m=next.m,s=19,ox=(88-m[0].length*s)/2,oy=(88-m.length*s)/2;nextCtx.save();nextCtx.translate(ox,oy);m.forEach((r,y)=>r.forEach((v,x)=>{if(v)cell(nextCtx,x,y,s,next.id)}));nextCtx.restore()}
+function update(){ $('#t-score').textContent=score.toLocaleString();$('#t-lines').textContent=lines;$('#t-level').textContent=level}
+function lock(){active.m.forEach((r,y)=>r.forEach((v,x)=>{if(v&&active.y+y>=0)board[active.y+y][active.x+x]=active.id}));let n=0;for(let y=19;y>=0;y--){if(board[y].every(v=>v!==-1)){board.splice(y,1);board.unshift(Array(10).fill(-1));n++;y++}}if(n){score+=([0,100,300,500,800][n]||0)*level;lines+=n;level=1+Math.floor(lines/10)}update();spawn()}
+function move(dx,dy){if(!active||!running||paused)return false;if(!hit(active.m,active.x+dx,active.y+dy)){active.x+=dx;active.y+=dy;draw();return true}if(dy>0)lock();draw();return false}
+function rotate(){if(!running||paused)return;let m=active.m[0].map((_,i)=>active.m.map(r=>r[i]).reverse());for(let dx of [0,-1,1,-2,2])if(!hit(m,active.x+dx,active.y)){active.m=m;active.x+=dx;break}draw()}
+function drop(){if(!running||paused)return;let n=0;while(!hit(active.m,active.x,active.y+1)){active.y++;n++}score+=n*2;update();lock();draw()}
+function action(a){if(a==='left')move(-1,0);if(a==='right')move(1,0);if(a==='down'){if(move(0,1)){score++;update()}}if(a==='rotate')rotate();if(a==='drop')drop()}
+function finish(){running=false;$('#t-message').textContent='游戏结束';$('#t-start').textContent='再来一局';$('#t-overlay').style.display='flex';$('#t-status').textContent='已结束'}
+function start(){board=Array.from({length:20},()=>Array(10).fill(-1));active=null;next=null;bag=[];score=0;lines=0;level=1;acc=0;last=0;paused=false;running=true;$('#t-overlay').style.display='none';$('#t-pause').textContent='暂停';$('#t-status').textContent='游戏中';spawn();update();draw();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop)}
+function pause(){if(!running)return;paused=!paused;$('#t-overlay').style.display=paused?'flex':'none';$('#t-message').textContent='已暂停';$('#t-start').textContent='继续游戏';$('#t-pause').textContent=paused?'继续':'暂停';$('#t-status').textContent=paused?'暂停中':'游戏中';last=0}
+function loop(t){if(!running)return;if(!last)last=t;let dt=Math.min(t-last,100);last=t;if(!paused){acc+=dt;let interval=Math.max(90,850*Math.pow(.81,level-1));if(acc>=interval){acc=0;move(0,1)}}raf=requestAnimationFrame(loop)}
+$('#t-start').onclick=()=>{if(paused)pause();else start()};
+$('#t-pause').onclick=pause;$('#t-reset').onclick=start;
+root.querySelectorAll('[data-move]').forEach(b=>{let timer,delay;b.addEventListener('pointerdown',e=>{e.preventDefault();action(b.dataset.move);if(['left','right','down'].includes(b.dataset.move)){delay=setTimeout(()=>{timer=setInterval(()=>action(b.dataset.move),75)},230)}});const stop=()=>{clearTimeout(delay);clearInterval(timer)};b.addEventListener('pointerup',stop);b.addEventListener('pointercancel',stop);b.addEventListener('pointerleave',stop)});
+const key=e=>{const m={ArrowLeft:'left',ArrowRight:'right',ArrowDown:'down',ArrowUp:'rotate',' ':'drop'};if(m[e.key]){e.preventDefault();if(!e.repeat||!['rotate','drop'].includes(m[e.key]))action(m[e.key])}else if(e.key.toLowerCase()==='p')pause()};
+document.addEventListener('keydown',key);
+board=Array.from({length:20},()=>Array(10).fill(-1));draw();
+})();
+</script>
+</AppBlock>
