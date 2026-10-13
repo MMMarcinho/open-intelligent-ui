@@ -1,5 +1,7 @@
 # Open Intelligent UI
 
+![Open Intelligent UI 天蓝色手绘横幅：代码文档变成滑块、待办列表和图表等交互界面](docs/assets/readme-banner.png)
+
 Open Intelligent UI 是一套独立的交互 UI 协议 v0.1 和 TypeScript / React 参考实现。它将 Markdown 与受限组件 DSL 解析为可交互界面，用消息级状态保存输入，用宿主接口处理需要授权的动作。
 
 这是一个**本地实验项目**，尚未接入聊天网站或发布为 npm 包；它不声称兼容任何网站的私有协议。
