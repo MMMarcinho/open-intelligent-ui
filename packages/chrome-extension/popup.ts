@@ -1,121 +1,92 @@
-import { ADAPTER_OPTIONS, DEFAULT_SETTINGS, normalizeSettings, selectPageAdapter, validateUrlRule, type ExtensionSettings } from '../../services/extension-rules.js';
+import { DEFAULT_SETTINGS, normalizeSettings, selectPageAdapter, urlMatchesPattern, validateUrlRule, type ExtensionSettings } from '../../services/extension-rules.js';
 
 export {};
 declare const chrome: any;
+
 const toggle = document.querySelector<HTMLInputElement>('#enabled')!;
-const defaultToggle = document.querySelector<HTMLInputElement>('#default-deepseek')!;
-const statusElement = document.querySelector<HTMLElement>('#status')!;
-const rulesElement = document.querySelector<HTMLElement>('#rules')!;
-const form = document.querySelector<HTMLFormElement>('#add-rule')!;
-const patternInput = document.querySelector<HTMLInputElement>('#pattern')!;
-const adapterInput = document.querySelector<HTMLSelectElement>('#adapter')!;
+const pageStatus = document.querySelector<HTMLElement>('#page-status')!;
 const notice = document.querySelector<HTMLElement>('#notice')!;
-const versionElement = document.querySelector<HTMLElement>('#build-version')!;
-versionElement.textContent = `v${chrome.runtime.getManifest?.().version ?? 'dev'} · stream`;
+const openSettings = document.querySelector<HTMLButtonElement>('#open-settings')!;
 let settings: ExtensionSettings = { ...DEFAULT_SETTINGS, rules: [] };
-form.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled = true;
-toggle.disabled = true;
-defaultToggle.disabled = true;
 
-const inform = (message: string) => { notice.textContent = message; };
-async function activeTab(): Promise<{ id?: number; url?: string } | null> {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true }) as { id?: number; url?: string }[];
-  return tabs[0] ?? null;
-}
-async function fileAccessAllowed(): Promise<boolean> {
-  try { return await chrome.extension.isAllowedFileSchemeAccess(); } catch { return false; }
-}
-function renderRules(): void {
-  rulesElement.replaceChildren();
-  if (!settings.rules.length) {
-    const empty = document.createElement('p'); empty.className = 'empty'; empty.textContent = '尚无自定义规则。'; rulesElement.append(empty);
-  }
-  for (const rule of settings.rules) {
-    const row = document.createElement('div'); row.className = 'rule';
-    const details = document.createElement('div');
-    const pattern = document.createElement('strong'); pattern.textContent = rule.pattern;
-    const adapter = document.createElement('small'); adapter.textContent = ADAPTER_OPTIONS.find(option => option.id === rule.adapterId)?.label ?? rule.adapterId;
-    details.append(pattern, adapter);
-    const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '移除';
-    remove.addEventListener('click', () => {
-      settings.rules = settings.rules.filter(item => item.id !== rule.id);
-      void saveSettings();
-    });
-    row.append(details, remove); rulesElement.append(row);
-  }
-  toggle.checked = settings.enabled;
-  defaultToggle.checked = settings.defaultDeepSeek;
-}
-async function refreshStatus(): Promise<void> {
-  const tab = await activeTab();
-  if (!tab?.id || !tab.url) { statusElement.textContent = '无法读取当前标签页 URL；请在目标页面打开扩展。'; return; }
+const setPageStatus = (message: string, tone: 'neutral' | 'success' | 'warning' = 'neutral') => {
+  pageStatus.textContent = message;
+  pageStatus.dataset.tone = tone;
+};
+const showError = (message: string) => { notice.textContent = message; notice.hidden = !message; };
+
+async function refreshPageStatus(): Promise<void> {
+  if (!settings.enabled) { setPageStatus('已暂停'); return; }
+  let tab: { id?: number; url?: string } | undefined;
+  try { tab = (await chrome.tabs.query({ active: true, currentWindow: true }))[0]; }
+  catch { setPageStatus('无法检查', 'warning'); return; }
+  if (!tab?.id || !tab.url) { setPageStatus('无法检查', 'warning'); return; }
   let url: URL;
-  try { url = new URL(tab.url); } catch { statusElement.textContent = '当前页面 URL 无效。'; return; }
-  if (!settings.enabled) { statusElement.textContent = '总开关已关闭；原文可见。'; return; }
+  try { url = new URL(tab.url); }
+  catch { setPageStatus('无法检查', 'warning'); return; }
   const adapter = selectPageAdapter(url, settings);
-  if (!adapter) { statusElement.textContent = '当前页面未命中任何规则，未读取回复。'; return; }
-  if (url.protocol === 'file:' && !await fileAccessAllowed()) {
-    statusElement.textContent = '文件规则已配置；请在扩展详情手动打开“允许访问文件网址”并刷新页面。'; return;
+  if (!adapter) { setPageStatus('不在展示范围'); return; }
+
+  // A saved custom rule can outlive its optional permission. Do not call it active.
+  const rule = [...settings.rules].reverse().find(item => urlMatchesPattern(url, item.pattern));
+  if (rule) {
+    const validated = validateUrlRule(rule.pattern, rule.adapterId);
+    if (validated.ok) {
+      try {
+        if (!await chrome.permissions.contains({ origins: [validated.hostPattern] })) {
+          setPageStatus('需要站点权限', 'warning'); return;
+        }
+        if (url.protocol === 'file:' && !await chrome.extension.isAllowedFileSchemeAccess()) {
+          setPageStatus('需要文件访问权限', 'warning'); return;
+        }
+      } catch { setPageStatus('权限待确认', 'warning'); return; }
+    }
   }
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, { type: 'iui-status' }) as { rendered: number; siteId: string | null };
-    statusElement.textContent = `${adapter} 适配器：已渲染 ${result.rendered} 条有效回复。`;
-  } catch { statusElement.textContent = '规则已配置；请刷新页面以启用渲染。'; }
-}
-async function syncAndInject(): Promise<void> {
-  try { await chrome.runtime.sendMessage({ type: 'iui-sync-rules' }); } catch { /* Storage listener also schedules sync. */ }
-  const tab = await activeTab();
-  if (!tab?.id || !tab.url || !settings.enabled) return;
-  let url: URL;
-  try { url = new URL(tab.url); } catch { return; }
-  if (!selectPageAdapter(url, settings)) return;
-  if (url.protocol === 'file:' && !await fileAccessAllowed()) return;
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: 'iui-reload-settings' });
-    return; // A registered or static content script already owns this tab.
-  } catch { /* An existing custom-rule tab may need its first injection. */ }
-  try {
-    await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ['hidden.css'] });
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-    await chrome.tabs.sendMessage(tab.id, { type: 'iui-reload-settings' });
-  } catch { /* Chrome may withhold site access; refreshStatus explains the reload path. */ }
-}
-async function saveSettings(): Promise<void> {
-  await chrome.storage.local.set({ iuiSettings: { ...settings, rules: [...settings.rules] } });
-  renderRules();
-  await syncAndInject();
-  await refreshStatus();
+    const status = await chrome.tabs.sendMessage(tab.id, { type: 'iui-status' }) as { enabled?: boolean; siteId?: string | null };
+    setPageStatus(status.enabled && status.siteId === adapter ? '已启用' : '等待页面加载', status.enabled && status.siteId === adapter ? 'success' : 'warning');
+  } catch { setPageStatus('已配置，刷新后生效', 'warning'); }
 }
 
-toggle.addEventListener('change', () => { settings.enabled = toggle.checked; void saveSettings(); });
-defaultToggle.addEventListener('change', () => { settings.defaultDeepSeek = defaultToggle.checked; void saveSettings(); });
-form.addEventListener('submit', event => {
-  event.preventDefault();
-  const validated = validateUrlRule(patternInput.value, adapterInput.value);
-  if (!validated.ok) { inform(validated.error); return; }
-  // Request exactly this origin from a direct user gesture. Chrome owns the prompt.
+async function loadSettings(): Promise<void> {
+  const stored = await chrome.storage.local.get({ iuiSettings: null, enabled: true });
+  settings = normalizeSettings(stored.iuiSettings, stored.enabled);
+  toggle.checked = settings.enabled;
+  toggle.disabled = false;
+  await refreshPageStatus();
+}
+
+toggle.addEventListener('change', () => {
   void (async () => {
+    const desired = toggle.checked;
+    toggle.disabled = true;
+    showError('');
     try {
-      if (validated.hostPattern !== 'https://chat.deepseek.com/*') {
-        const granted = await chrome.permissions.request({ origins: [validated.hostPattern] });
-        if (!granted) { inform('Chrome 未授予该站点权限；规则未添加。'); return; }
-      }
-      settings.rules.push({ id: `r_${crypto.randomUUID()}`, pattern: validated.pattern, adapterId: validated.adapterId });
-      await saveSettings();
-      patternInput.value = '';
-      inform(validated.hostPattern === 'file:///*' && !await fileAccessAllowed()
-        ? '规则已保存。请在扩展详情手动开启“允许访问文件网址”，然后刷新文件页。'
-        : '规则已保存；当前页面若未更新，请刷新。');
-    } catch (error) { inform(`规则未保存：${String(error)}`); }
+      // Read again before writing so this quick switch preserves edits made in Options.
+      const stored = await chrome.storage.local.get({ iuiSettings: null, enabled: true });
+      const next = normalizeSettings(stored.iuiSettings, stored.enabled);
+      next.enabled = desired;
+      await chrome.storage.local.set({ iuiSettings: next });
+      settings = next;
+      try {
+        const tab = (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+        if (tab?.id) await chrome.tabs.sendMessage(tab.id, { type: 'iui-reload-settings' });
+      } catch { /* The active tab may not host a content script. */ }
+      await refreshPageStatus();
+    } catch (error) {
+      toggle.checked = settings.enabled;
+      showError(`保存失败：${String(error)}`);
+    } finally { toggle.disabled = false; }
   })();
 });
 
-void chrome.storage.local.get({ iuiSettings: null, enabled: true }).then(async (stored: { iuiSettings?: unknown; enabled?: unknown }) => {
-  settings = normalizeSettings(stored.iuiSettings, stored.enabled);
-  form.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled = false;
-  toggle.disabled = false;
-  defaultToggle.disabled = false;
-  renderRules();
-  await syncAndInject();
-  await refreshStatus();
+openSettings.addEventListener('click', () => {
+  void chrome.runtime.openOptionsPage().catch((error: unknown) => showError(`无法打开设置：${String(error)}`));
+});
+chrome.storage.onChanged.addListener((changes: Record<string, unknown>, area: string) => {
+  if (area === 'local' && (changes.iuiSettings || changes.enabled)) void loadSettings();
+});
+void loadSettings().catch((error: unknown) => {
+  setPageStatus('设置读取失败', 'warning');
+  showError(String(error));
 });

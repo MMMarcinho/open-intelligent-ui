@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="options.css">
+  <title>Open Intelligent UI · 设置</title>
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <div class="brand">
+        <img class="brand-icon" src="icons/icon-48.png" width="48" height="48" alt="">
+        <div><p class="eyebrow">EXTENSION SETTINGS</p><h1>Open Intelligent UI</h1><p class="header-description">选择显示范围，管理页面规则与来源权限</p></div>
+      </div>
+      <small id="build-version">版本读取中…</small>
+    </header>
+
+    <div class="settings-layout">
+      <aside class="settings-sidebar">
+        <section class="card primary-card" aria-labelledby="main-title">
+          <div class="primary-copy"><p class="kicker">运行设置</p><h2 id="main-title">回复渲染</h2><p class="muted">关闭后恢复网页原文</p></div>
+          <label class="toggle"><input id="enabled" type="checkbox" aria-label="启用回复渲染"><span class="toggle-track" aria-hidden="true"></span></label>
+        </section>
+        <section class="card" aria-labelledby="default-title">
+          <div class="section-heading"><h2 id="default-title">默认站点</h2></div>
+          <label class="setting-row"><span class="setting-copy"><strong>DeepSeek 在线对话</strong><small>自动识别助手回复</small></span><span class="toggle"><input id="default-deepseek" type="checkbox" aria-label="启用默认 DeepSeek 页面"><span class="toggle-track" aria-hidden="true"></span></span></label>
+          <code class="site-url">https://chat.deepseek.com/*</code>
+        </section>
+        <section class="card help-card" aria-labelledby="help-title">
+          <h2 id="help-title">权限与隐私</h2>
+          <p>新增来源时，Chrome 会请求该站点的权限；不授权就不保存规则。</p>
+          <p>本地文件还需在扩展详情中手动打开“允许访问文件网址”，然后刷新文件页。</p>
+          <p>扩展不发送消息，也不拦截请求。</p>
+        </section>
+      </aside>
+
+      <section class="card rules-card" aria-labelledby="rules-title">
+        <div class="section-heading"><div><p class="kicker">页面范围</p><h2 id="rules-title">自定义页面规则</h2></div><span id="rule-count" class="count">0 条规则</span></div>
+        <div id="rules" class="rules-list"></div>
+        <div class="section-divider"></div>
+        <form id="add-rule">
+          <div class="form-heading"><h3 id="form-title">添加页面规则</h3><p>仅适用于所选适配器支持的页面结构</p></div>
+          <label for="pattern">页面 URL 或路由</label>
+          <input id="pattern" type="text" spellcheck="false" autocomplete="off" placeholder="file:///Users/me/Desktop/DeepSeek.html" aria-describedby="pattern-help" required>
+          <p id="pattern-help" class="field-help">域名需完整；* 可用于路径、查询或片段。</p>
+          <label for="adapter">页面结构适配器</label>
+          <select id="adapter"><option value="deepseek">DeepSeek 回复结构（含保存页）</option></select>
+          <div class="form-actions"><button id="submit-rule" class="button button-primary" type="submit">添加规则</button><button id="cancel-edit" class="button button-quiet" type="button" hidden>取消编辑</button></div>
+          <p class="permission-hint">规则保存后，已打开的目标页面可能需要刷新。</p>
+          <p id="notice" role="status" aria-live="polite" hidden></p>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>
