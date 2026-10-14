@@ -37,7 +37,7 @@
 
 使用 Acorn **只解析** JS 形状的表达式，随后由 `SafeEvaluator` 解释白名单 AST。支持字面量、数组和对象、只读属性、算术/比较/逻辑/三元、模板字符串、箭头函数、数组 `includes/join/slice/map/filter/find/sort`、数值格式化、`Math.max/min/round/floor/ceil/abs`、`Number`、`String`、`JSON.stringify`。`sort` 操作副本。拒绝 `new`、赋值、任意函数调用、原型链、`constructor`、全局对象、DOM 和网络 API。最大输入 200 KB、2000 节点、32 层、每次表达式 5000 步、数组 1000 项、动作字符串 8 KB。资源预算错误产生诊断或运行时反馈；未来部署可按宿主需要进一步收紧。
 
-`GenUI.copy(text)`、`GenUI.issueNewTurn(text)` 只在事件中生成 `HostAction`。默认适配器不执行；宿主提供 `requestAction` 并负责预览、用户确认、按 `id` 去重、权限、失败反馈。playground 的 copy 在用户再次确认后尝试写剪贴板；发起新对话仅显示未配置，不发送消息。资源查询由 `resolveResource` 合同交给授权宿主，默认显示“宿主未配置”；不得从查询词推断或伪造来源。
+`GenUI.copy(text)`、`GenUI.issueNewTurn(text)` 只在事件中生成 `HostAction`。默认适配器不执行；宿主提供 `requestAction` 并负责预览、用户确认、按 `id` 去重、权限、失败反馈。playground 的 copy 在用户再次确认后尝试写剪贴板；发起新对话仅显示未配置，不发送消息。资源查询由 `resolveResource` 合同交给授权宿主；无解析器时显示“宿主未配置”。当前项目图片宿主仅接受 `iui:readme-banner` 与 `iui:extension-icon` 两个精确查询，返回项目自有素材；不得从其他查询词推断或伪造来源。这是本项目的受限 host 实现，并不声称与原宿主的完整图片搜索等价。
 
 ## 流式与诊断
 
@@ -49,4 +49,4 @@
 
 `AppBlock`、`CodeBlock`、`WritingBlock` 可携带不递归的 `rawContent` 字符串；其结束标签须独占一行。`CodeBlock` 只按原文展示，`WritingBlock` 默认待宿主接入。`AppBlock` 需要用户点击后由 `HostAdapter.authorizeAppBlock` 返回已审阅 HTML；默认没有适配器时不创建 iframe。本地两份样本、CSP 和剩余安全边界见 [AppBlock 说明](APPBLOCK.zh-CN.md)。
 
-URL 只接受绝对 http(s)，拒绝 `javascript:`、`data:`、`blob:` 和相对地址。模型的任意 `svg` 标记不渲染；图表和固定图标内部生成受控 SVG。颜色/尺寸属性限于白名单语义值或严格格式；主题覆盖另有校验。React 不使用 `dangerouslySetInnerHTML`。
+模型提供的 URL 只接受绝对 http(s)，拒绝 `javascript:`、`data:`、`blob:` 和相对地址。受信任的图片宿主可以返回构建时打包的 PNG data URL；模型无法把任意 data URL 直接变成图片。模型的任意 `svg` 标记不渲染；图表和固定图标内部生成受控 SVG。颜色/尺寸属性限于白名单语义值或严格格式；主题覆盖另有校验。React 不使用 `dangerouslySetInnerHTML`。

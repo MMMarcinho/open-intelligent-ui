@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { SiteAdapterRegistry } from '../services/adapter-registry.js';
 import { DeepSeekAdapter, readDeepSeekReply } from '../services/adapters/deepseek.js';
-import { ReplyCoordinator, parseReply, type CreateReplyView } from '../services/reply-coordinator.js';
+import { ReplyCoordinator, parseReply, parseReplyParts, type CreateReplyView } from '../services/reply-coordinator.js';
 import { Runtime } from '../protocol/index.js';
 import { normalizeSettings, selectPageAdapter, urlMatchesPattern, validateUrlRule } from '../services/extension-rules.js';
 
@@ -70,6 +70,85 @@ test('plain text, a fenced code example, and incomplete DSL remain original', ()
     assert.equal(body.hasAttribute('data-iui-original-hidden'), false);
   } finally { close(); }
 });
+
+test('mixed Markdown keeps its formatted prose in order and mounts only explicit UI regions', () => {
+  const html = `<div class="ds-message"><div class="ds-markdown ds-assistant-message-main-content">
+    <p><strong>Before</strong> &amp; <a href="https://example.org/info">source</a><img src="https://example.org/pixel" onerror="alert(1)"><a href="javascript:alert(1)" onclick="alert(1)">unsafe link</a></p>
+    <p>{@body const [n,setN]=DIL.useState(1)}</p>
+    <p>&lt;box&gt;&lt;title&gt;{n}&lt;/title&gt;&lt;/box&gt;</p>
+    <p>Between <em>formatted</em> paragraphs.</p>
+    <p>&lt;box&gt;&lt;button onClick={()=&gt;setN(n+1)}&gt;Next&lt;/button&gt;&lt;/box&gt;</p>
+    <p>After <code>&lt;box&gt;code example&lt;/box&gt;</code> remains text.</p>
+    <pre><code>&lt;box&gt;&lt;title&gt;fenced example&lt;/title&gt;&lt;/box&gt;</code></pre>
+  </div><button>Copy</button></div>`;
+  const { dom, adapter, coordinator, sessions, close } = setup(html);
+  try {
+    const body = dom.window.document.querySelector('.ds-assistant-message-main-content')!;
+    const message = adapter.readMessage(dom.window.document.querySelector('.ds-message')!, new URL(url))!;
+    const parts = parseReplyParts(message.text, message.identity);
+    assert.ok(parts);
+    assert.equal(parts.document.children.length, 2);
+    assert.equal(parts.document.declarations.length, 1);
+    coordinator.start();
+    assert.equal(coordinator.status.rendered, 1);
+    assert.equal(sessions.length, 1, 'Both UI islands share one runtime');
+    const projection = dom.window.document.querySelector('[data-iui-projection]')!;
+    const hosts = projection.querySelectorAll('[data-iui-preview]');
+    assert.equal(hosts.length, 2);
+    assert.match(projection.innerHTML, /<strong>Before<\/strong>/);
+    assert.match(projection.innerHTML, /<em>formatted<\/em>/);
+    assert.equal(projection.querySelector('img'), null);
+    assert.equal(projection.querySelector('[onclick]'), null);
+    assert.equal(projection.querySelector('a[href^="javascript:"]'), null);
+    assert.match(projection.innerHTML, /<code>&lt;box&gt;code example&lt;\/box&gt;<\/code>/);
+    assert.ok(projection.textContent!.indexOf('Before') < projection.textContent!.indexOf('Between'));
+    assert.ok(projection.textContent!.indexOf('Between') < projection.textContent!.indexOf('After'));
+    assert.ok(hosts[0].compareDocumentPosition(projection.querySelector('em')!) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.ok(projection.querySelector('em')!.compareDocumentPosition(hosts[1]) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.ok(body.hasAttribute('data-iui-original-hidden'));
+    assert.ok(dom.window.document.querySelector('button')!.isConnected);
+    coordinator.setEnabled(false);
+    assert.equal(body.hasAttribute('data-iui-original-hidden'), false);
+    assert.equal(projection.isConnected, false);
+  } finally { close(); }
+});
+
+test('mixed protocol detection leaves prose examples inert, including code fences and inline code', () => {
+  for (const source of [
+    'Example: <box><title>demo</title></box>',
+    'Use `<box><title>demo</title></box>` in a prompt.',
+    '```xml\n<box><title>demo</title></box>\n```',
+    'Explanation: <title>not a standalone UI</title>',
+  ]) assert.equal(parseReplyParts(source, 'example'), null, source);
+  const source = 'Intro\n{@body const [n,setN]=DIL.useState(2)}\n<box><text>{n}</text></box>\nOutro';
+  assert.equal(parseReply(source, 'strict'), null);
+  assert.equal(parseReplyParts(source, 'mixed')?.document.children.length, 1);
+  assert.equal(parseReplyParts('Intro\n<box><title>Ready</title></box>\nOutro', 'no-state')?.document.children.length, 1);
+});
+
+test('mixed stream commits a safe UI prefix and reuses its runtime through later prose and UI', () => {
+  const { dom, coordinator, sessions, close } = setup('<div class="ds-message"><div class="ds-markdown ds-assistant-message-main-content"></div></div>');
+  const body = dom.window.document.querySelector('.ds-assistant-message-main-content')!;
+  const source = 'Intro\n{@body const [n,setN]=DIL.useState(1)}\n<box><title>Ready</title><text>{n}</text></box>\nBetween\n<box><button onClick={()=>setN(n+1)}>Go</button></box>\nAfter';
+  try {
+    coordinator.start();
+    const ready = source.indexOf('</title>') + '</title>'.length;
+    for (let index = 1; index <= source.length; index++) {
+      body.textContent = source.slice(0, index);
+      coordinator.scan();
+      if (index === ready) {
+        assert.equal(coordinator.status.rendered, 1);
+        sessions[0].runtime.state.set('n', 7);
+      }
+    }
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0].runtime.state.get('n'), 7);
+    assert.equal(sessions[0].runtime.document.children.length, 2);
+    assert.equal(dom.window.document.querySelectorAll('[data-iui-preview]').length, 2);
+    assert.match(dom.window.document.querySelector('[data-iui-projection]')!.textContent!, /Intro[\s\S]*Between[\s\S]*After/);
+  } finally { close(); }
+});
+
 
 test('mounts once, preserves runtime on incremental update, and restores original on toggle', () => {
   const { dom, coordinator, sessions, close } = setup();

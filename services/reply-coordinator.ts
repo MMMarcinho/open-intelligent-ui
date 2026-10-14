@@ -2,11 +2,14 @@ import { parseDsl, parseDslPreview, Runtime, SafeEvaluator, type Document as Pro
 import type { SiteAdapter, SiteMessage } from './site-adapter.js';
 import { SiteAdapterRegistry } from './adapter-registry.js';
 
-export type ReplyView = { update(document: ProtocolDocument): void; dispose(): void };
-export type CreateReplyView = (host: HTMLElement, document: ProtocolDocument) => ReplyView;
+export type ReplyView = { update(document: ProtocolDocument, hosts?: HTMLElement[]): void; dispose(): void };
+export type CreateReplyView = (hosts: HTMLElement[], document: ProtocolDocument) => ReplyView;
+type Region = { start: number; end: number; kind: 'declaration' | 'ui' };
+type ReplyParts = { document: ProtocolDocument; regions: Region[] };
 type Mounted = {
   message: SiteMessage;
-  host: HTMLElement;
+  projection: HTMLElement;
+  hosts: HTMLElement[];
   view: ReplyView;
   visible: boolean;
   lastText: string;
@@ -53,6 +56,7 @@ function referencesReady(source: string, available: Set<string>): boolean {
 function readyForPreview(document: ProtocolDocument): boolean {
   const known = new Set(['Math', 'JSON', 'GenUI', 'Number', 'String']);
   for (const declaration of document.declarations) {
+    if (known.has(declaration.name) || (declaration.setter && (known.has(declaration.setter) || declaration.setter === declaration.name))) return false;
     if (!referencesReady(declaration.expression, known)) return false;
     known.add(declaration.name);
     if (declaration.setter) known.add(declaration.setter);
@@ -109,6 +113,36 @@ export function parseReply(source: string, messageId: string): ProtocolDocument 
   return !document.diagnostics.some(item => item.severity === 'error') && onlyProtocolAtTopLevel &&
     hasComponent(document.children) && (document.complete || hasPreviewContent(document.children)) &&
     readyForPreview(document) ? document : null;
+}
+
+const mixedRoots = new Set(['box', 'row', 'col', 'grid', 'card', 'list', 'flow', 'table', 'carousel', 'Chart']);
+
+/** Protocol regions are removed from a formatted site clone; all UI roots share one runtime. */
+export function parseReplyParts(source: string, messageId: string): ReplyParts | null {
+  if (!source || !/[<{]/.test(source)) return null;
+  const complete = parseDsl(source, messageId, true);
+  const parsed = complete.complete ? complete : parseDslPreview(source, messageId);
+  if (parsed.diagnostics.some(item => item.severity === 'error')) return null;
+  const hasProse = parsed.children.some(node => node.kind === 'text' && !!node.text.trim());
+  const components = parsed.children.filter((node): node is Extract<ProtocolNode, { kind: 'element' }> => node.kind === 'element');
+  const roots = components.filter(node => {
+    if (!hasProse) return true;
+    // An inline mention of a component name is ordinary text. A standalone
+    // structural root, or a root directly following a declaration, is explicit UI.
+    const beforeLine = source.slice(0, node.span.start).split('\n').at(-1) ?? '';
+    const followsDeclaration = parsed.declarations.some(declaration =>
+      declaration.span.end <= node.span.start && !source.slice(declaration.span.end, node.span.start).trim());
+    return followsDeclaration || (mixedRoots.has(node.name) && !beforeLine.trim());
+  });
+  if (!roots.length) return null;
+  const document: ProtocolDocument = { ...parsed, children: roots };
+  if (!readyForPreview(document)) return null;
+  const regions: Region[] = [
+    ...parsed.declarations.map(item => ({ start: item.span.start, end: item.span.end, kind: 'declaration' as const })),
+    ...roots.map(item => ({ start: item.span.start, end: item.span.end < 0 ? source.length : item.span.end, kind: 'ui' as const })),
+  ].sort((a, b) => a.start - b.start);
+  if (regions.some((region, index) => region.end <= region.start || (index > 0 && region.start < regions[index - 1].end))) return null;
+  return { document, regions };
 }
 
 /** Keeps all site-specific DOM knowledge in adapters and all UI state in one mount per reply. */
@@ -185,10 +219,10 @@ export class ReplyCoordinator {
 
   private isExternalMutation(record: MutationRecord): boolean {
     const target = record.target.nodeType === 1 ? record.target as Element : record.target.parentElement;
-    if (target?.closest('[data-iui-preview]')) return false;
+    if (target?.closest('[data-iui-projection]')) return false;
     if (record.type === 'childList') {
       const nodes = [...record.addedNodes, ...record.removedNodes];
-      if (nodes.length && nodes.every(node => node === this.style || (node.nodeType === 1 && (node as Element).matches('[data-iui-preview]')))) return false;
+      if (nodes.length && nodes.every(node => node === this.style || (node.nodeType === 1 && (node as Element).matches('[data-iui-projection]')))) return false;
     }
     return true;
   }
@@ -220,7 +254,7 @@ export class ReplyCoordinator {
       }
     } catch { /* A changing site DOM must leave its own reply readable. */ }
     for (const [element, item] of this.mounted) {
-      if (!seen.has(element) || !element.isConnected || !item.message.body.isConnected || !item.host.isConnected) this.unmount(element);
+      if (!seen.has(element) || !element.isConnected || !item.message.body.isConnected || !item.projection.isConnected) this.unmount(element);
     }
   }
 
@@ -229,21 +263,23 @@ export class ReplyCoordinator {
     if (item && (item.message.identity !== message.identity || item.message.conversationId !== message.conversationId)) {
       this.unmount(message.element); item = undefined;
     }
-    if (item && item.message.body !== message.body) {
+    const bodyChanged = !!item && item.message.body !== message.body;
+    if (bodyChanged && item) {
       item.message.body.removeAttribute('data-iui-original-hidden');
       item.message = message;
-      message.body.after(item.host);
+      message.body.after(item.projection);
       if (item.visible) message.body.setAttribute('data-iui-original-hidden', '');
-    } else if (item && !item.host.isConnected) message.body.after(item.host);
-    if (item && item.lastText === message.text && !item.invalidSince) return;
+    } else if (item && !item.projection.isConnected) message.body.after(item.projection);
+    if (item && item.lastText === message.text && !item.invalidSince && !bodyChanged) return;
+    if (item) item.message = message; // Source ranges belong to the latest text nodes.
     const generation = item?.generation ?? 0;
     const changedGeneration = !!item && !!item.lastValidText && !!message.text &&
       !message.text.startsWith(item.lastValidText) && !item.lastValidText.startsWith(message.text) &&
       message.text.trimStart().slice(0, 8) !== item.lastValidText.trimStart().slice(0, 8);
     const nextGeneration = changedGeneration ? generation + 1 : generation;
     const messageId = `${adapter.siteId}:${message.conversationId}:${message.identity}:${nextGeneration}`;
-    let parsed: ProtocolDocument | null;
-    try { parsed = parseReply(message.text, messageId); }
+    let parsed: ReplyParts | null;
+    try { parsed = parseReplyParts(message.text, messageId); }
     catch { parsed = null; }
     if (!parsed) {
       if (item) {
@@ -261,30 +297,63 @@ export class ReplyCoordinator {
       return;
     }
     if (changedGeneration) { this.unmount(message.element); item = undefined; }
-    const signature = signatureOf(parsed);
+    const signature = signatureOf(parsed.document);
     if (item) {
       try {
-        if (signature !== item.signature) item.view.update(parsed);
+        const count = parsed.regions.filter(region => region.kind === 'ui').length;
+        const resized = item.hosts.length !== count;
+        while (item.hosts.length < count) {
+          const host = this.document.createElement('div');
+          host.setAttribute('data-iui-preview', '');
+          item.hosts.push(host);
+        }
+        if (item.hosts.length > count) item.hosts.length = count;
+        this.project(item, parsed);
+        if (signature !== item.signature || resized) item.view.update(parsed.document, item.hosts);
+      } catch { this.unmount(message.element); item = undefined; }
+      if (item) {
         item.signature = signature;
         item.lastText = message.text; item.lastValidText = message.text; item.invalidSince = 0;
         this.setVisible(item, true);
-      } catch { this.unmount(message.element); }
-      return;
+        return;
+      }
     }
-    const host = this.document.createElement('div');
-    host.setAttribute('data-iui-preview', '');
+    const projection = this.document.createElement('div');
+    projection.setAttribute('data-iui-projection', '');
+    message.decorateProjection?.(projection);
+    const hosts = parsed.regions.filter(region => region.kind === 'ui').map(() => {
+      const host = this.document.createElement('div');
+      host.setAttribute('data-iui-preview', '');
+      return host;
+    });
     try {
-      message.body.after(host);
-      const view = this.createView(host, parsed);
-      item = { message, host, view, visible: false, lastText: message.text, lastValidText: message.text, signature, generation: nextGeneration, invalidSince: 0 };
+      message.body.after(projection);
+      item = { message, projection, hosts, view: { update() {}, dispose() {} }, visible: false, lastText: message.text, lastValidText: message.text, signature, generation: nextGeneration, invalidSince: 0 };
+      this.project(item, parsed);
+      item.view = this.createView(hosts, parsed.document);
       this.mounted.set(message.element, item);
       this.setVisible(item, true);
-    } catch { host.remove(); message.body.removeAttribute('data-iui-original-hidden'); }
+    } catch { projection.remove(); message.body.removeAttribute('data-iui-original-hidden'); }
+  }
+
+  private project(item: Mounted, parsed: ReplyParts): void {
+    const { cloneTextRange, text } = item.message;
+    const fragment = this.document.createDocumentFragment();
+    let offset = 0, hostIndex = 0;
+    for (const region of parsed.regions) {
+      // Whitespace between declarations and UI is protocol spacing, not a
+      // paragraph to replay. It otherwise leaves empty site block wrappers.
+      if (text.slice(offset, region.start).trim()) fragment.append(cloneTextRange(offset, region.start));
+      if (region.kind === 'ui') fragment.append(item.hosts[hostIndex++]);
+      offset = region.end;
+    }
+    if (text.slice(offset).trim()) fragment.append(cloneTextRange(offset, text.length));
+    item.projection.replaceChildren(fragment);
   }
 
   private setVisible(item: Mounted, visible: boolean): void {
     item.visible = visible;
-    item.host.hidden = !visible;
+    item.projection.hidden = !visible;
     if (visible) item.message.body.setAttribute('data-iui-original-hidden', '');
     else item.message.body.removeAttribute('data-iui-original-hidden');
   }
@@ -295,7 +364,7 @@ export class ReplyCoordinator {
     this.mounted.delete(element);
     item.message.body.removeAttribute('data-iui-original-hidden');
     try { item.view.dispose(); } catch { /* Original text must still be restored. */ }
-    item.host.remove();
+    item.projection.remove();
   }
   private clear(): void { for (const element of [...this.mounted.keys()]) this.unmount(element); }
 }

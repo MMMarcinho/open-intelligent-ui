@@ -19,7 +19,7 @@ for (const name of ['content', 'popup', 'options', 'background']) {
     outfile: resolve(out, `${name}.js`),
     bundle: true, platform: 'browser', format: 'iife', target: 'chrome120',
     define: { 'process.env.NODE_ENV': '"production"' },
-    loader: { '.css': 'text' },
+    loader: { '.css': 'text', '.png': 'dataurl' },
     minify: true, legalComments: 'none',
   });
 }

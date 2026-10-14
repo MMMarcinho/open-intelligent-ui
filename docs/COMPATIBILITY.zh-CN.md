@@ -2,7 +2,7 @@
 
 状态说明：**本地** = 有独立导出的 React 参考组件及当前已知子集行为，并非与原环境完整等价；**宿主** = 解析并保留名称/通用资源合同，默认显示未配置，未接真实服务；**未支持** = 明确拒绝或只按字面显示。名称来自用户提供的最新清单，包括列出的专用子组件。61 是注册表名称及画廊展示项数量，不是 61 个完成的组件。
 
-本地 46 个名称分为 [文字](../ui/components/text/index.ts) 14、[布局](../ui/components/layout/index.ts) 20、[交互](../ui/components/interaction/index.ts) 11、[图表](../ui/components/visualization/index.ts) 1；由 [React 包入口](../packages/react-ui/index.ts)单独导出。导出名通常是协议名的 PascalCase；`col → Column`、`math → MathText`。`UIRenderer` 负责 AST 属性求值、事件绑定与组件分派。14 个宿主类名称中 13 个默认仅展示未配置，`AppBlock` 有独立的受限本地宿主接口；`svg` 1 项拒绝。
+本地 46 个名称分为 [文字](../ui/components/text/index.ts) 14、[布局](../ui/components/layout/index.ts) 20、[交互](../ui/components/interaction/index.ts) 11、[图表](../ui/components/visualization/index.ts) 1；由 [React 包入口](../packages/react-ui/index.ts)单独导出。导出名通常是协议名的 PascalCase；`col → Column`、`math → MathText`。`UIRenderer` 负责 AST 属性求值、事件绑定与组件分派。14 个宿主类名称中 `AsyncImage`、`AsyncImageGroup` 现有受限项目素材解析；`AppBlock` 有独立的受限本地宿主接口；其余 11 个默认仅展示未配置。`svg` 1 项拒绝。
 
 | 类别 | 名称 | 状态与限制 |
 |---|---|---|
@@ -13,7 +13,7 @@
 | 可视化 | `Chart` | 本地折线、柱、散点、饼图，最多 100 数据点、4 series；基础坐标/图例，无完整 Tooltip 或复杂轴配置。 |
 | 特殊内容 | `CodeBlock` | 本地代码原文展示；不执行 TSX 或 Mermaid。新增样本中的 `editable`、`interactive`、`model_previewable` 属性仅保留，不代表编辑器或预览能力已实现。 |
 | 特殊宿主块 | `WritingBlock` | 宿主。参考仅有名称；编辑与保存合同待定义，默认未配置。 |
-| 媒体与地理 | `AsyncImage`, `AsyncImageGroup`, `AsyncVideo`, `MapWidgetV2`, `favicon` | 宿主。需可信资源解析；默认未配置，不伪造图片、地图或视频。 |
+| 媒体与地理 | `AsyncImage`, `AsyncImageGroup`, `AsyncVideo`, `MapWidgetV2`, `favicon` | 前两者接入精确的本地项目素材映射，支持加载、失败、替代文本、比例和图片组；不按任意查询联网，尚非完整原宿主能力。其余默认未配置，不伪造地图或视频。 |
 | 数据与引用 | `Entity`, `Cite`, `Link`, `FollowUp`, `FileCite`, `FileNavList`, `MemoryCite` | 宿主。需实体/引用/文件标识与权限解析；默认未配置。 |
 | 特殊宿主块 | `AppBlock` | 本地受限宿主已实现：不递归保存 HTML/style/script，明确点击后，只有精确匹配两份已审阅样本才提供隔离 iframe；默认无授权或修改后不运行。`sandbox="allow-scripts"` 且无 `allow-same-origin`，CSP 拒网；停止/重启销毁并重建。样式是本项目适配，不声称还原 GPT 内部实现；无法严格限制恶意 CPU 循环。详见 [AppBlock 说明](APPBLOCK.zh-CN.md)。 |
 | 原始矢量 | `svg` | 未支持模型提供的 SVG。固定图标与 `Chart` 自行生成安全 SVG。 |

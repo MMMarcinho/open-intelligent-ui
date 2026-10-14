@@ -1,0 +1,12 @@
+<box border padding={3} gap={3}>
+  <badge>本地已授权项目素材</badge>
+  <title>真实图片与协议文本</title>
+  <text>这里展示的是 Open Intelligent UI 项目的 README 横幅和扩展图标，不是联网搜得的 OpenAI 公司照片。</text>
+  <AsyncImage query="iui:readme-banner" aspectRatio="3:1" width="100%"/>
+  <caption>单图 · 项目 README 横幅 · 本地资源解析</caption>
+  <AsyncImageGroup query={["iui:extension-icon","iui:readme-banner"]} aspectRatio="3:1" layout="carousel"/>
+  <caption>图片组 · 可在两张已核验的项目素材之间切换</caption>
+  <divider/>
+  <AsyncImage query="iui:missing-example" aspectRatio="3:1"/>
+  <caption>失败示例 · 未授权的查询不会联网或伪造图片</caption>
+</box>

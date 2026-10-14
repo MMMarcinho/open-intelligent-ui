@@ -3,6 +3,9 @@ import { SiteAdapterRegistry } from '../../services/adapter-registry.js';
 import { DeepSeekAdapter } from '../../services/adapters/deepseek.js';
 import { ReplyCoordinator } from '../../services/reply-coordinator.js';
 import { createReactReplyView } from '../../services/reply-view.js';
+import { createProjectMediaHost } from '../../services/project-media-host.js';
+import bannerUrl from '../../docs/assets/readme-banner.png';
+import iconUrl from './icons/icon-128.png';
 import { DEFAULT_SETTINGS, normalizeSettings, selectPageAdapter, type ExtensionSettings } from '../../services/extension-rules.js';
 
 declare const chrome: any;
@@ -17,7 +20,7 @@ if (scope.__iuiContentController) {
   registry.register(new DeepSeekAdapter());
   let settings: ExtensionSettings = { ...DEFAULT_SETTINGS, rules: [] };
   const coordinator = new ReplyCoordinator(
-    document, registry, createReactReplyView(styles), 60,
+    document, registry, createReactReplyView(styles, createProjectMediaHost({ banner: bannerUrl, icon: iconUrl })), 60,
     url => registry.get(selectPageAdapter(url, settings) ?? ''),
   );
   coordinator.setEnabled(false); // No preview before persisted settings have loaded.

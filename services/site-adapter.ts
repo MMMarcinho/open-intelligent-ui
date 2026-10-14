@@ -8,6 +8,10 @@ export type SiteMessage = {
   body: Element;
   /** Decoded protocol source, including meaningful rich-text line breaks. */
   text: string;
+  /** Clone a source interval as inert, formatted site content. Required for mixed replies. */
+  cloneTextRange: (start: number, end: number) => DocumentFragment;
+  /** Apply site typography to the inert projection without changing selectors. */
+  decorateProjection?: (projection: HTMLElement) => void;
   /** Stable within one observed DOM message; adapters must state stronger guarantees explicitly. */
   identity: string;
   conversationId: string;

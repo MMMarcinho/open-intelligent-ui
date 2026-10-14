@@ -5,6 +5,9 @@ import { UIRenderer } from '../../packages/react-ui';
 import { ThemeProvider, type ThemeName, type ThemeMode } from '../../ui/theme';
 import { demos } from './demo-data';
 import { authorizeReviewedApp } from './reviewed-apps';
+import { createProjectMediaHost } from '../../services/project-media-host';
+import bannerUrl from '../../docs/assets/readme-banner.png?url';
+import iconUrl from '../../packages/chrome-extension/icons/icon-128.png?url';
 import '../../ui/styles.css';
 import './style.css';
 
@@ -13,10 +16,11 @@ type ParseState='ready'|'checking'|'error';
 const locationOf=(text:string,start:number)=>{const prefix=text.slice(0,start),line=prefix.split('\n').length,column=start-(prefix.lastIndexOf('\n')+1)+1;return `${line}:${column}`;};
 function App(){
   const [pending,setPending]=useState<PendingAction|null>(null);
-  const adapter=useMemo<HostAdapter>(()=>({requestAction:action=>new Promise(resolve=>setPending({action,resolve})),authorizeAppBlock:authorizeReviewedApp}),[]);
-  const [activeIndex,setActiveIndex]=useState(0),active=demos[activeIndex];
-  const [source,setSource]=useState(demos[0].source);
-  const [runtime,setRuntime]=useState(()=>new Runtime(parseDsl(demos[0].source,'demo-cost-1'),adapter));
+  const adapter=useMemo<HostAdapter>(()=>({requestAction:action=>new Promise(resolve=>setPending({action,resolve})),authorizeAppBlock:authorizeReviewedApp,
+    resolveResource:createProjectMediaHost({banner:new URL(bannerUrl,window.location.href).href,icon:new URL(iconUrl,window.location.href).href}).resolveResource}),[]);
+  const [activeIndex,setActiveIndex]=useState(()=>Math.max(0,demos.findIndex(demo=>demo.id===new URLSearchParams(window.location.search).get('demo')))),active=demos[activeIndex];
+  const [source,setSource]=useState(active.source);
+  const [runtime,setRuntime]=useState(()=>new Runtime(parseDsl(active.source,`demo-${active.id}-1`),adapter));
   const [parseState,setParseState]=useState<ParseState>('ready'),[diagnostics,setDiagnostics]=useState<Diagnostic[]>([]),[revision,setRevision]=useState(0),[notice,setNotice]=useState('');
   const [theme,setTheme]=useState<ThemeName>('studio'),[mode,setMode]=useState<ThemeMode>('light');
   useEffect(()=>{
@@ -56,7 +60,7 @@ function App(){
       </header>
 
       <section className="demo-section" aria-label="选择演示">
-        <div className="section-heading"><div><span className="kicker">01 / PICK A SCENARIO</span><h2>从真实样本开始拼装</h2></div><span className="section-note">7 个场景 · 证据级别明确标注</span></div>
+        <div className="section-heading"><div><span className="kicker">01 / PICK A SCENARIO</span><h2>从真实样本开始拼装</h2></div><span className="section-note">{demos.length} 个场景 · 证据级别明确标注</span></div>
         <nav className="demo-list" aria-label="演示样例">{demos.map((demo,index)=><button type="button" key={demo.id} className={`demo-card ${activeIndex===index?'is-active':''}`} aria-current={activeIndex===index?'page':undefined} onClick={()=>openDemo(index)}><span className="demo-number">{demo.number}</span><strong>{demo.title}</strong><small>{demo.subtitle}</small><span className="demo-kind">{demo.kind==='captured'?'可执行摘录':demo.kind==='reviewed-app'?'受限 AppBlock':'标注改编'}</span></button>)}</nav>
       </section>
 

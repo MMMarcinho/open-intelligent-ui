@@ -79,13 +79,14 @@ export function Demo() {
 
 注册表有 61 个名称，其中 **46 个有本地 React 参考映射**。本地图表支持折线、柱、散点和饼图，最多 100 条数据、4 个 series；这是基础实现，没有完整 Tooltip 或复杂轴配置。
 
-图片、地图、实体、引用、文件及 `WritingBlock` 等 **13 个宿主组件默认未配置**。本地工作台的 `AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅样本；Chrome 扩展不配置 AppBlock 授权，因此聊天回复中的任意 HTML / JS 都不能运行。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。扩展只读已显示的 DeepSeek 助手正文，真实站点行为尚未验证。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
+`AsyncImage` 与 `AsyncImageGroup` 已有受限宿主：只把两个精确查询解析为本项目自有的 README 横幅和扩展图标，不联网搜图，也不把它们当成其他主题的照片。其余媒体、地图、实体、引用、文件及 `WritingBlock` 等 **11 个宿主组件默认未配置**。本地工作台的 `AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅样本；Chrome 扩展不配置 AppBlock 授权，因此聊天回复中的任意 HTML / JS 都不能运行。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。扩展只读已显示的 DeepSeek 助手正文，真实站点行为尚未验证。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
 
 ## 文档
 
 - [协议规范](docs/PROTOCOL.zh-CN.md) · [已捕获格式的证据与边界](docs/CAPTURED_FORMAT.zh-CN.md)
 - [兼容矩阵](docs/COMPATIBILITY.zh-CN.md) · [组件画廊说明](test/README.zh-CN.md)
 - [DeepSeek 扩展静态验证](docs/DEEPSEEK_EXTENSION.zh-CN.md) · [手动加载说明](packages/chrome-extension/README.md)
+- [受限图片宿主与实际演示](docs/IMAGE_HOST.zh-CN.md)
 - [模型提示词与 token 预算](docs/MODEL_PROMPT.zh-CN.md) · [本地验证记录](docs/VERIFICATION.zh-CN.md)
 
 两张配图均为仓库内可维护的 SVG 示意，不是浏览器截图。

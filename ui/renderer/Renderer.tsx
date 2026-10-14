@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ThemeProvider } from '../theme/index.js';
 import { byName, safeColor, safeCssSize, type Attribute, type Node, type Runtime } from '../../protocol/index.js';
 import { Text, Title, Caption, Badge, Code, MathText, Label, Bold, Italic, Underline, Strikethrough, Icon, Blockquote, CodeBlock } from '../components/text/index.js';
 import { Box, Row, Column, Flow, Card, Grid, GridItem, FlowItem, CarouselItem, Divider, Spacer, Table, TableRow, TableCell, List, ListItem, Popover, PopoverTrigger, PopoverContent, Carousel } from '../components/layout/index.js';
 import { Button, Pressable, Input, Textarea, Select, Checkbox, RadioGroup, Radio, Slider, DatePicker, SegmentedControl, type SelectOption } from '../components/interaction/index.js';
 import { Chart } from '../components/visualization/index.js';
-import { AppBlock, UnconfiguredHost, UnsupportedComponent } from '../components/media/index.js';
+import { AppBlock, AsyncImage, AsyncImageGroup, UnconfiguredHost, UnsupportedComponent } from '../components/media/index.js';
 import { renderMarkdownText } from './markdown.js';
 
-type Props={runtime:Runtime;showPlainText?:boolean};
+type Props={runtime:Runtime;showPlainText?:boolean;targets?:HTMLElement[]};
 type Scope=Record<string,unknown>;
 const get=(a:Attribute|undefined,scope:Scope,runtime:Runtime):unknown=>{if(!a)return undefined;if(a.kind==='literal')return a.value;try{return runtime.value(String(a.value),scope);}catch{return undefined;}};
 const asOptions=(value:unknown):SelectOption[]=>Array.isArray(value)?value.slice(0,100).filter((x):x is {label:unknown;value:unknown}=>!!x&&typeof x==='object'&&'label'in x&&'value'in x).map(x=>({label:String(x.label),value:String(x.value)})):[];
@@ -17,12 +19,12 @@ function resolvedStyle(read:(name:string)=>unknown):React.CSSProperties {
   for(const name of ['width','height','minHeight'] as const){const size=safeCssSize(read(name));if(size)style[name]=size;}
   const background=safeColor(read('background'));if(background)style.background=background;
   const color=safeColor(read('color'));if(color)style.color=color;
-  const sizes:Record<string,string>={xs:'11px',sm:'12px',md:'14px',lg:'18px',xl:'22px','2xl':'28px'};
+  const sizes:Record<string,string>={xs:'12px',sm:'14px',md:'16px',lg:'18px',xl:'20px','2xl':'24px'};
   if(sizes[String(read('size'))])style.fontSize=sizes[String(read('size'))];
   const weights:Record<string,number>={normal:400,medium:500,semibold:600,bold:700};
   if(weights[String(read('weight'))])style.fontWeight=weights[String(read('weight'))];
-  const padding=Number(read('padding'));if(Number.isFinite(padding)&&padding>=0&&padding<=8)style.padding=`${padding*6}px`;
-  const gap=Number(read('gap'));if(Number.isFinite(gap)&&gap>=0&&gap<=8)style.gap=`${gap*6}px`;
+  const padding=Number(read('padding'));if(Number.isFinite(padding)&&padding>=0&&padding<=8)style.padding=`calc(var(--iui-spacing) * ${padding})`;
+  const gap=Number(read('gap'));if(Number.isFinite(gap)&&gap>=0&&gap<=8)style.gap=`calc(var(--iui-spacing) * ${gap})`;
   if(read('radius'))style.borderRadius=String(read('radius'))==='full'?'999px':'var(--iui-radius)';
   if(read('border'))style.border='1px solid var(--iui-border)';
   const flex=read('flex');if(flex!==undefined&&/^\d+(?:\.\d+)?$/.test(String(flex)))style.flex=String(flex);
@@ -37,7 +39,7 @@ function resolvedStyle(read:(name:string)=>unknown):React.CSSProperties {
   if(read('block'))style.width='100%';
   return style;
 }
-export function UIRenderer({runtime,showPlainText=false}:Props){
+export function UIRenderer({runtime,showPlainText=false,targets}:Props){
   const [,revision]=useState(0),scope=runtime.scope();
   const force=()=>revision(v=>v+1);
   const render=(n:Node,key:React.Key,env:Scope=scope):React.ReactNode=>{
@@ -51,6 +53,12 @@ export function UIRenderer({runtime,showPlainText=false}:Props){
     if(name==='AppBlock'){
       const literal=(key:string)=>n.attributes[key]?.kind==='literal'&&typeof n.attributes[key].value==='string'?String(n.attributes[key].value):undefined;
       return <AppBlock key={key} request={{messageId:runtime.document.messageId,id:literal('app_block_id')||'',title:literal('title'),html:n.rawContent||''}} adapter={runtime.adapter}/>;
+    }
+    if(name==='AsyncImage') return <AsyncImage key={key} query={p('query')} aspectRatio={p('aspectRatio')} width={p('width')}
+      messageId={runtime.document.messageId} adapter={runtime.adapter}/>;
+    if(name==='AsyncImageGroup') {
+      return <AsyncImageGroup key={key} queries={p('query')}
+        aspectRatio={p('aspectRatio')} layout={p('layout')} messageId={runtime.document.messageId} adapter={runtime.adapter}/>;
     }
     if(spec.support==='host')return <UnconfiguredHost key={key} name={name}/>;
     const kids=n.children.map((c,i)=>render(c,i,env));
@@ -105,5 +113,7 @@ export function UIRenderer({runtime,showPlainText=false}:Props){
       default:return <UnsupportedComponent key={key} name={name}/>;
     }
   };
+  if (targets) return <>{runtime.document.children.map((node, index) =>
+    targets[index] ? createPortal(<ThemeProvider name="studio" mode="light"><div className="iui-root">{render(node, index)}</div></ThemeProvider>, targets[index], index) : null)}</>;
   return <div className="iui-root">{runtime.document.children.map((n,i)=>render(n,i))}</div>;
 }

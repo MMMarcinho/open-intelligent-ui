@@ -43,7 +43,7 @@
 | 输入事件 | `onChange={setX}` 和 `onChange={v=>...}`；点击箭头函数 | `input/textarea/select/date-picker` 传字符串，checkbox 传布尔，slider 传数值，radio/分段传选项值 | 样本暗示值回调；是否还有 DOM event 形状未知，当前选择值语义 |
 | 宿主动作 | `GenUI.copy(...)`、`GenUI.issueNewTurn(...)` 出现在点击处理器 | 仅明确点击后产生动作；默认不执行。注入宿主负责预览、授权、去重与失败反馈 | GPT 宿主实际权限、确认界面和发送协议未知 |
 
-`GenUI` 在派生表达式或初次渲染求值中不派发。Playground 的复制经二次确认才尝试写剪贴板；`issueNewTurn` 只显示未配置，不发送对话。没有注入宿主时，不联网、不读取任意 DOM。当前仅定义 `HostAdapter.resolveResource` 合同，尚未实现资源解析流程。
+`GenUI` 在派生表达式或初次渲染求值中不派发。Playground 的复制经二次确认才尝试写剪贴板；`issueNewTurn` 只显示未配置，不发送对话。没有注入宿主时，不联网、不读取任意 DOM。`HostAdapter.resolveResource` 现在为 `AsyncImage`、`AsyncImageGroup` 提供两张项目自有图片的精确本地映射；其他查询和媒体类型仍不解析。
 
 ## 4. 已知组件和属性
 
@@ -56,7 +56,7 @@
 | 控件 | `value`, `checked`, `onChange`, `onClick`, `options`, `rows`, `placeholder`, `min/max/step`, `disabled`, `block`, `variant`, `direction`, `lineThrough` | 本地受控组件。`lineThrough` 选择为选中时划线；其原始语义未证实。`variant` 目前只认 `ghost/outline` |
 | 组合 | `table-*`, `list-*`, `grid-item`, `flow-item`, `carousel-item`, `popover-trigger/content` | 本地结构；Popover 用原生 `details/summary`，Carousel 一次只显示一项。样本的 `visibleItems={1.25}` 暂未实现；动画、完整键盘行为未知 |
 | Chart | `content.chartType` 为 `line/bar/scatter/pie`；`xKey`, `series[{dataKey,label,valueSuffix}]`, `data`, `yAxisMin/yAxisMax`, `nameKey/valueKey`, `xAxisLabel` | 本地 SVG 绘制四类基础图，最多 100 行、4 series；显示通用图例和部分后缀/轴标签。Tooltip、完整轴格式及原环境尺寸规则未知 |
-| 资源/引用 | `AsyncImage*`, `AsyncVideo`, `MapWidgetV2`, `Entity`, `Cite`, `Link`, `FollowUp`, `File*`, `MemoryCite`, `WritingBlock`, `favicon` | 注册和展示未配置状态；尚无可用资源适配，不伪造图片、地图或引用结果 |
+| 资源/引用 | `AsyncImage*`, `AsyncVideo`, `MapWidgetV2`, `Entity`, `Cite`, `Link`, `FollowUp`, `File*`, `MemoryCite`, `WritingBlock`, `favicon` | 两个图片组件有受限项目素材适配；其余展示未配置，不伪造地图或引用结果 |
 | 原文应用块 | `AppBlock title/icon/variant/app_block_id` 与内部 HTML/style/script | 仅两份本地已审阅样本在明确点击后可通过隔离宿主运行；无授权时未配置，任意修改拒绝。细节见 [AppBlock 说明](APPBLOCK.zh-CN.md) |
 | 原文代码/文稿 | `CodeBlock language="tsx" editable interactive`、`language="mermaid" model_previewable`；`WritingBlock id variant` | 这些属性只在第五份模型声明中可见。本项目保留 `rawContent`；CodeBlock 仅展示，WritingBlock 默认未配置。`editable`、`interactive`、`model_previewable` 不授予执行权限或编辑保存能力 |
 | SVG | 模型提供 `<svg>` | 明确拒绝；仅内部图表和固定图标生成受控内容 |
