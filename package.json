@@ -6,6 +6,7 @@
   "exports": {
     "./protocol": { "types": "./dist/lib/protocol/index.d.ts", "import": "./dist/lib/protocol/index.js" },
     "./react-ui": { "types": "./dist/lib/packages/react-ui/index.d.ts", "import": "./dist/lib/packages/react-ui/index.js" },
+    "./muse-app-adapter": { "types": "./dist/lib/packages/muse-app-adapter/index.d.ts", "import": "./dist/lib/packages/muse-app-adapter/index.js" },
     "./styles.css": "./ui/styles.css"
   },
   "scripts": {

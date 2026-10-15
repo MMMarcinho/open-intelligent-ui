@@ -1,0 +1,53 @@
+/**
+ * "muse" host theme。
+ *
+ * 两层结构,对应协议的主题思想:
+ * 1. MUSE_APP_THEME_CSS — 语义 token (--iui-*) 到 Muse 宿主变量 (--hatch-widget-*) 的映射层。
+ *    换一个宿主,只需换这一层。
+ * 2. DEFAULT_COMPONENT_CSS — 组件默认样式,只引用 --iui-*,不直接碰宿主变量。
+ *
+ * theme/muse-app.css 与 theme/components.css 是由本模块生成的镜像文件(供查阅),
+ * 生成脚本见 theme/export-css.ts。test/muse-app-adapter-theme.test.ts 会断言
+ * 镜像与常量一致,防止漂移。
+ */
+
+export const MUSE_APP_THEME_CSS = `:root{
+--iui-bg:var(--hatch-widget-bg);
+--iui-surface:var(--hatch-widget-surface);
+--iui-surface-2:var(--hatch-widget-surface-muted);
+--iui-text:var(--hatch-widget-text);
+--iui-text-2:var(--hatch-widget-muted);
+--iui-border:var(--hatch-widget-border);
+--iui-accent:var(--hatch-widget-accent);
+--iui-on-accent:var(--hatch-widget-on-accent);
+--iui-focus:var(--hatch-widget-focus);
+--iui-shadow:var(--hatch-widget-shadow);
+--iui-radius-lg:16px;
+--iui-radius-md:10px;
+--iui-radius-pill:999px;
+}`;
+
+export const DEFAULT_COMPONENT_CSS = `
+.tui{box-sizing:border-box;background:var(--iui-surface);border:1px solid var(--iui-border);border-radius:var(--iui-radius-lg);overflow:hidden;}
+.tui *{box-sizing:border-box;}
+.tui-bar{height:4px;background:linear-gradient(90deg,var(--iui-accent),transparent 70%);}
+.tui-body{padding:16px 18px 14px;display:flex;flex-direction:column;gap:10px;}
+.tui-text{font-size:14px;color:var(--iui-text);margin:0;line-height:1.5;}
+.tui-x{font-variant-numeric:tabular-nums;}
+.tui-title{font-size:18px;font-weight:800;color:var(--iui-text);letter-spacing:.2px;margin:0;}
+.tui-sub{font-size:12px;color:var(--iui-text-2);margin:-6px 0 0;}
+.tui-lab{font-size:13px;font-weight:700;color:var(--iui-text);margin:6px 0 0;display:flex;align-items:center;}
+.tui-lab .tui-x{font-size:11.5px;font-weight:800;color:var(--iui-on-accent);background:var(--iui-accent);border-radius:var(--iui-radius-pill);padding:2px 10px;margin-left:8px;}
+.tui-select{width:100%;-webkit-appearance:none;appearance:none;background-color:var(--iui-surface-2);border:1px solid var(--iui-border);border-radius:var(--iui-radius-md);color:var(--iui-text);font-size:14px;font-weight:600;padding:10px 36px 10px 12px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 14px center;}
+.tui-slider{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:999px;background:var(--iui-surface-2);outline:none;margin:8px 0 4px;padding:0;border:none;}
+.tui-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--iui-accent);border:3px solid var(--iui-surface);box-shadow:0 1px 5px var(--iui-shadow);cursor:pointer;}
+.tui-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--iui-accent);border:3px solid var(--iui-surface);cursor:pointer;}
+.tui-row{display:flex;gap:8px;}
+.tui-col{display:flex;flex-direction:column;gap:8px;}
+.tui-card{background:var(--iui-surface-2);border:1px solid var(--iui-border);border-radius:var(--iui-radius-md);padding:12px 14px;}
+.tui-divider{height:1px;background:var(--iui-border);margin:5px 0;}
+.tui-spacer{height:8px;}
+.tui-chip{flex:1;background:var(--iui-surface-2);border:1px solid var(--iui-border);color:var(--iui-text);font-size:12.5px;font-weight:600;border-radius:var(--iui-radius-pill);padding:8px 0;cursor:pointer;}
+.tui-chip:active{transform:scale(.96);}
+.tui-chip.on{background:var(--iui-accent);border-color:var(--iui-accent);color:var(--iui-on-accent);}
+`;

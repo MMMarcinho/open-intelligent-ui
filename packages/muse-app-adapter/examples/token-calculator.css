@@ -1,0 +1,12 @@
+/* token-calculator 示例的追加样式(通过 extraCss 传入)。只用 --iui-* token。 */
+.x-rate{display:flex;gap:8px;}
+.x-cell{flex:1;flex-direction:column;gap:2px;background:var(--iui-surface-2);border:1px solid var(--iui-border);border-radius:var(--iui-radius-md);padding:8px 12px;}
+.x-cell .x-k{font-size:11px;color:var(--iui-text-2);}
+.x-cell .x-v{font-size:16px;font-weight:800;color:var(--iui-text);font-variant-numeric:tabular-nums;}
+.x-rrow{justify-content:space-between;align-items:baseline;}
+.x-rrow .tui-text{font-size:13.5px;color:var(--iui-text-2);}
+.x-rrow .x-val{font-size:13.5px;font-weight:700;color:var(--iui-text);}
+.x-glabel{text-align:center;font-size:11.5px;letter-spacing:2px;color:var(--iui-text-2);margin:6px 0 0;}
+.x-gval{text-align:center;font-size:34px;font-weight:800;color:var(--iui-text);line-height:1.25;margin:0;}
+.x-gcny{text-align:center;font-size:13px;color:var(--iui-text-2);margin:-4px 0 0;}
+.x-foot{font-size:11px;line-height:1.65;color:var(--iui-text-2);text-align:center;}

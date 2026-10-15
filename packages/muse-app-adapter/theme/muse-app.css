@@ -1,0 +1,16 @@
+/* 由 theme.ts 生成,请勿手改,改完运行 export-css.ts */
+:root{
+--iui-bg:var(--hatch-widget-bg);
+--iui-surface:var(--hatch-widget-surface);
+--iui-surface-2:var(--hatch-widget-surface-muted);
+--iui-text:var(--hatch-widget-text);
+--iui-text-2:var(--hatch-widget-muted);
+--iui-border:var(--hatch-widget-border);
+--iui-accent:var(--hatch-widget-accent);
+--iui-on-accent:var(--hatch-widget-on-accent);
+--iui-focus:var(--hatch-widget-focus);
+--iui-shadow:var(--hatch-widget-shadow);
+--iui-radius-lg:16px;
+--iui-radius-md:10px;
+--iui-radius-pill:999px;
+}
