@@ -16,6 +16,7 @@ export interface ExprToken { t: 'num' | 'str' | 'id' | 'op'; v: string | number 
 export type ExprNode =
   | { k: 'num'; v: number }
   | { k: 'str'; v: string }
+  | { k: 'bool'; v: boolean }
   | { k: 'id'; v: string }
   | { k: 'neg'; x: ExprNode }
   | { k: 'bin'; o: '+' | '-' | '*' | '/'; l: ExprNode; r: ExprNode }
@@ -35,7 +36,23 @@ export function tokenize(src: string): ExprToken[] {
     }
     if (c === '"' || c === "'") {
       const q = c; let k = i + 1; let s = '';
-      while (k < src.length && src[k] !== q) { if (src[k] === '\\') k++; s += src[k]; k++; }
+      while (k < src.length && src[k] !== q) {
+        if (src[k] !== '\\') { s += src[k++]; continue; }
+        k++;
+        if (k >= src.length) throw new Error('unterminated escape');
+        const escape = src[k++];
+        const simple: Record<string, string> = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0' };
+        if (Object.prototype.hasOwnProperty.call(simple, escape)) s += simple[escape];
+        else if (escape === 'u' || escape === 'x') {
+          const size = escape === 'u' ? 4 : 2;
+          const digits = src.slice(k, k + size);
+          if (digits.length !== size || !/^[0-9a-f]+$/i.test(digits)) throw new Error('bad escape');
+          s += String.fromCharCode(parseInt(digits, 16)); k += size;
+        } else if (escape === '\n') { /* line continuation */ }
+        else if (escape === '\r') { if (src[k] === '\n') k++; }
+        else s += escape;
+      }
+      if (src[k] !== q) throw new Error('unterminated string');
       toks.push({ t: 'str', v: s }); i = k + 1; continue;
     }
     if (/[A-Za-z_$]/.test(c)) {
@@ -82,6 +99,7 @@ export function parseExpr(src: string): ExprNode {
     if (t.t === 'str') { eat(); return { k: 'str', v: t.v as string }; }
     if (t.t === 'op' && t.v === '(') { eat('('); const n = expr(); eat(')'); return n; }
     if (t.t === 'id') {
+      if (t.v === 'true' || t.v === 'false') { eat(); return { k: 'bool', v: t.v === 'true' }; }
       eat(); let node: ExprNode = { k: 'id', v: t.v as string };
       for (;;) {
         const p = peek();
@@ -115,7 +133,7 @@ export function parseExpr(src: string): ExprNode {
 export function evalNode(n: ExprNode | null | undefined, scope: Record<string, unknown>): unknown {
   if (!n) throw new Error('null ast');
   switch (n.k) {
-    case 'num': case 'str': return n.v;
+    case 'num': case 'str': case 'bool': return n.v;
     case 'id':
       if (!(n.v in scope)) throw new Error('unknown ident: ' + n.v);
       return scope[n.v];
@@ -172,7 +190,13 @@ export function fmtCny(v: unknown): string {
 
 /** 编译器用:把求值器函数序列化为可内联进 widget 的源码。 */
 export function serializeEvaluator(): string {
-  return [tokenize, parseExpr, evalNode, trimNum, fmt, fmtK, fmtCny]
+  const source = [tokenize, parseExpr, evalNode, trimNum, fmt, fmtK, fmtCny]
     .map(f => f.toString())
     .join('\n');
+  // tsx/esbuild keepNames can insert module-local __name (or __name2, etc.)
+  // helpers into nested functions. Only inspect our own trusted function source,
+  // never DSL input. Naming has no semantic role in the widget evaluator.
+  const helpers = [...new Set(source.match(/\b__name\d*\b/g) || [])]
+    .map(name => `function ${name}(fn) { return fn; }`).join('\n');
+  return helpers + '\n' + source;
 }

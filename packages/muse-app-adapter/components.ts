@@ -6,15 +6,17 @@
  *
  * 约定:
  * - 所有文本走 esc() 转义,表达式走 <span data-expr> 由 widget 端求值器计算。
- * - value={ident} 绑定状态,data-bind 由运行时接线;onChange 只做结构确认。
+ * - value={ident} 绑定显示状态,onChange 按声明的 setter 映射接线。
  * - button 的 onClick 只接受白名单形状,其他一律降级为禁用按钮 + warning。
  */
 import type { Node as AstNode, Attribute } from '../../protocol/types.js';
+import { parseExpressionAt } from 'acorn';
 import { evalNode, parseExpr } from './expr.js';
 
 export interface RenderContext {
   hostData: Record<string, unknown>;
   warnings: string[];
+  setters?: ReadonlyMap<string, string>;
 }
 
 export function esc(s: string): string {
@@ -22,7 +24,8 @@ export function esc(s: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function litAttr(node: Extract<AstNode, { kind: 'element' }>, name: string): string {
@@ -46,36 +49,71 @@ export function evalLiteral(src: string): unknown {
 
 type El = Extract<AstNode, { kind: 'element' }>;
 
+/** Parse event syntax without executing it. Only explicitly supported shapes are wired. */
+function eventExpr(source: string): any {
+  const node = parseExpressionAt(source, 0, { ecmaVersion: 'latest' });
+  if (source.slice(node.end).trim()) throw new Error('unexpected event suffix');
+  return node;
+}
+
+function disabledAttr(node: El): boolean {
+  const attr = node.attributes?.disabled;
+  return !!attr && (attr.kind === 'expression' ? evalLiteral(String(attr.value)) === true : attr.value === true || attr.value === 'true');
+}
+
+function changeBinding(node: El, ctx: RenderContext): string {
+  const bind = (exprAttr(node, 'value') || '').trim();
+  try {
+    const handler = eventExpr(exprAttr(node, 'onChange') || '');
+    let setter = handler;
+    if (handler.type === 'ArrowFunctionExpression' && !handler.async && handler.params.length === 1 &&
+        handler.params[0].type === 'Identifier' && handler.body.type === 'CallExpression' &&
+        handler.body.arguments.length === 1 && handler.body.arguments[0].type === 'Identifier' &&
+        handler.body.arguments[0].name === handler.params[0].name) setter = handler.body.callee;
+    const key = setter.type === 'Identifier' ? ctx.setters?.get(setter.name) : undefined;
+    if (key === undefined || ![...(ctx.setters?.values() || [])].includes(bind)) throw new Error('unsupported binding');
+    return ` data-change="${esc(key)}"`;
+  } catch {
+    ctx.warnings.push(`${node.name} onChange 形状不支持,已禁用控件`);
+    return ' disabled';
+  }
+}
+
 function renderButton(node: El, ctx: RenderContext): string {
   const kids = (node.children || []).map(n => renderNode(n, ctx)).join('');
-  const oc = (exprAttr(node, 'onClick') || '').replace(/\s+/g, '');
-  const m = /^\(\)=>set([A-Za-z_]\w*)\(([\s\S]*)\)$/.exec(oc);
-  const disabled = litAttr(node, 'disabled') === 'true' || node.attributes?.['disabled']?.value === true;
-  if (!m) {
-    ctx.warnings.push(`button onClick 形状不支持,已降级为禁用按钮:${oc.slice(0, 60)}`);
+  const source = exprAttr(node, 'onClick') || '';
+  const disabled = disabledAttr(node) ? ' disabled' : '';
+  try {
+    const handler = eventExpr(source);
+    if (handler.type !== 'ArrowFunctionExpression' || handler.async || handler.params.length !== 0 ||
+        handler.body.type !== 'CallExpression') throw new Error('unsupported handler');
+    const call = handler.body;
+    const key = call.callee.type === 'Identifier' ? ctx.setters?.get(call.callee.name) : undefined;
+    if (key === undefined || call.arguments.length !== 1) throw new Error('unknown setter');
+    const arg = call.arguments[0];
+    if (arg.type === 'ArrowFunctionExpression' && !arg.async && arg.params.length === 1 &&
+        arg.params[0].type === 'Identifier' && arg.body.type === 'BinaryExpression' &&
+        arg.body.left.type === 'Identifier' && arg.body.left.name === arg.params[0].name &&
+        ['+', '-'].includes(arg.body.operator) && arg.body.right.type === 'Literal' &&
+        typeof arg.body.right.value === 'number' && Number.isFinite(arg.body.right.value)) {
+      const step = arg.body.right.value * (arg.body.operator === '+' ? 1 : -1);
+      return `<button class="tui-chip" data-set="${esc(key)}" data-delta="${step}"${disabled}>${kids}</button>`;
+    }
+    const value = evalLiteral(source.slice(arg.start, arg.end));
+    if (value === undefined || typeof value === 'object' || (typeof value === 'number' && !Number.isFinite(value))) throw new Error('unsupported value');
+    return `<button class="tui-chip" data-set="${esc(key)}" data-val='${esc(JSON.stringify(value))}'${disabled}>${kids}</button>`;
+  } catch {
+    ctx.warnings.push(`button onClick 形状或参数不支持,已降级为禁用按钮:${source.slice(0, 60)}`);
     return `<button class="tui-chip" disabled>${kids}</button>`;
   }
-  const key = m[1].charAt(0).toLowerCase() + m[1].slice(1);
-  const arg = m[2];
-  const delta = /^(prev|previous)=>(prev|previous)([+-])(\d+(?:\.\d+)?)$/.exec(arg);
-  if (delta) {
-    const sign = delta[3] === '+' ? 1 : -1;
-    const step = Number(delta[4]) * sign;
-    return `<button class="tui-chip" data-set="${esc(key)}" data-delta="${step}"${disabled ? ' disabled' : ''}>${kids}</button>`;
-  }
-  const value = evalLiteral(arg);
-  if (value === undefined || typeof value === 'object') {
-    ctx.warnings.push(`button onClick 参数不支持,已降级为禁用按钮:${arg.slice(0, 60)}`);
-    return `<button class="tui-chip" disabled>${kids}</button>`;
-  }
-  return `<button class="tui-chip" data-set="${esc(key)}" data-val='${esc(JSON.stringify(value))}'${disabled ? ' disabled' : ''}>${kids}</button>`;
 }
 
 function renderSelect(node: El, ctx: RenderContext): string {
-  const bind = exprAttr(node, 'value') || '';
-  const optsKey = exprAttr(node, 'options') || '';
+  const bind = (exprAttr(node, 'value') || '').trim();
+  const optsKey = (exprAttr(node, 'options') || '').trim();
   const opts = ctx.hostData[optsKey];
-  const disabled = node.attributes?.['disabled']?.value === true;
+  const disabled = disabledAttr(node);
+  const change = changeBinding(node, ctx);
   let options = '';
   if (Array.isArray(opts)) {
     options = opts
@@ -88,19 +126,20 @@ function renderSelect(node: El, ctx: RenderContext): string {
   } else {
     ctx.warnings.push(`select options="${optsKey}" 在 hostData 中不是数组,下拉为空`);
   }
-  return `<select class="tui-select" data-bind="${esc(bind)}"${disabled ? ' disabled' : ''}>${options}</select>`;
+  return `<select class="tui-select" data-bind="${esc(bind)}"${change}${disabled ? ' disabled' : ''}>${options}</select>`;
 }
 
 function renderSlider(node: El, ctx: RenderContext): string {
-  const bind = exprAttr(node, 'value') || '';
+  const bind = (exprAttr(node, 'value') || '').trim();
   const num = (n: string): string => {
-    const e = exprAttr(node, n);
-    if (e === null) return '';
-    const v = evalLiteral(e);
+    const attr = node.attributes?.[n];
+    if (!attr) return '';
+    const v = attr.kind === 'expression' ? evalLiteral(String(attr.value)) : Number(attr.value);
     return typeof v === 'number' ? String(v) : '';
   };
-  const disabled = node.attributes?.['disabled']?.value === true;
-  return `<input type="range" class="tui-slider" data-bind="${esc(bind)}" min="${num('min')}" max="${num('max')}" step="${num('step') || '1'}"${disabled ? ' disabled' : ''}/>`;
+  const disabled = disabledAttr(node);
+  const change = changeBinding(node, ctx);
+  return `<input type="range" class="tui-slider" data-bind="${esc(bind)}"${change} min="${num('min')}" max="${num('max')}" step="${num('step') || '1'}"${disabled ? ' disabled' : ''}/>`;
 }
 
 function renderElement(node: El, ctx: RenderContext): string {
