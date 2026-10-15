@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="520" viewBox="0 0 600 520" role="img" aria-labelledby="chrome-title chrome-desc">
+  <title id="chrome-title">Chrome 插件：从助手回复到消息内交互界面</title>
+  <desc id="chrome-desc">模型回复含文字和 DSL；网页适配器识别助手消息；解析器与受限状态运行时按完整片段流式更新；React 在 Shadow DOM 渲染消息内 UI。用户交互写回消息状态，插件不发送聊天消息。</desc>
+  <defs>
+    <marker id="chrome-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L7 4 L1 7" fill="none" stroke="#29495c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="chrome-return" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L7 4 L1 7" fill="none" stroke="#347ca4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="598" height="518" rx="18" fill="#fffaf1" stroke="#9abbd0" stroke-width="2"/>
+  <text x="34" y="39" fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="25" font-weight="700">Chrome：消息内渲染</text>
+  <rect x="436" y="18" width="130" height="30" rx="15" fill="#e7f5fc" stroke="#9abbd0"/>
+  <text x="501" y="38" text-anchor="middle" fill="#29495c" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="17" font-weight="600">DeepSeek Web</text>
+  <path d="M34 58 H566" stroke="#c0d9e6" stroke-width="2"/>
+
+  <g stroke="#29495c" stroke-width="1.5">
+    <rect x="55" y="80" width="490" height="70" rx="14" fill="#fffefa"/>
+    <rect x="55" y="174" width="490" height="70" rx="14" fill="#e8f5fb"/>
+    <rect x="55" y="268" width="490" height="70" rx="14" fill="#fffefa"/>
+    <rect x="55" y="380" width="490" height="70" rx="14" fill="#dceff9"/>
+  </g>
+  <g fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="78" y="109" font-size="22" font-weight="700">模型回复</text>
+    <text x="78" y="136" font-size="17" fill="#526b78">普通文字 + DSL</text>
+    <text x="78" y="203" font-size="22" font-weight="700">网页适配器</text>
+    <text x="78" y="230" font-size="17" fill="#526b78">识别助手消息</text>
+    <text x="78" y="297" font-size="22" font-weight="700">解析 / 受限状态运行时</text>
+    <text x="78" y="324" font-size="17" fill="#526b78">流式更新 · 只接收完整片段</text>
+    <text x="78" y="409" font-size="22" font-weight="700">消息内交互 UI</text>
+    <text x="78" y="436" font-size="17" fill="#526b78">React / Shadow DOM</text>
+  </g>
+  <g fill="none" stroke="#29495c" stroke-width="2.4" stroke-linecap="round">
+    <path d="M300 153 V170" marker-end="url(#chrome-arrow)"/>
+    <path d="M300 247 V264" marker-end="url(#chrome-arrow)"/>
+    <path d="M282 342 V376" marker-end="url(#chrome-arrow)"/>
+  </g>
+  <path d="M322 376 V342" fill="none" stroke="#347ca4" stroke-width="2.4" stroke-linecap="round" marker-end="url(#chrome-return)"/>
+  <text x="351" y="364" fill="#347ca4" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15" font-weight="600">交互写回状态</text>
+  <text x="55" y="489" fill="#526b78" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15">只读取并渲染回复；不发送聊天消息。</text>
+</svg>

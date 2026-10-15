@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="520" viewBox="0 0 600 520" role="img" aria-labelledby="app-title app-desc">
+  <title id="app-title">Muse App / Web：在 Agent 侧编译 DSL 并使用隔离网页 widget</title>
+  <desc id="app-desc">已观察格式的 DSL 由模型或 Agent 交给 Muse 适配器编译。编译器生成在 Muse App 或网页中显示的隔离 HTML widget。widget 与宿主状态桥双向同步，保存和恢复消息状态。继续对话的动作接口尚未接入，不代表所有原生 App 均支持。</desc>
+  <defs>
+    <marker id="app-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L7 4 L1 7" fill="none" stroke="#29495c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="app-return" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M1 1 L7 4 L1 7" fill="none" stroke="#347ca4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="598" height="518" rx="18" fill="#fffaf1" stroke="#9abbd0" stroke-width="2"/>
+  <text x="34" y="39" fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="25" font-weight="700">Muse：编译为网页 widget</text>
+  <rect x="465" y="18" width="101" height="30" rx="15" fill="#e7f5fc" stroke="#9abbd0"/>
+  <text x="515" y="38" text-anchor="middle" fill="#29495c" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="17" font-weight="600">App / Web</text>
+  <path d="M34 58 H566" stroke="#c0d9e6" stroke-width="2"/>
+
+  <g stroke="#29495c" stroke-width="1.5">
+    <rect x="55" y="80" width="490" height="70" rx="14" fill="#fffefa"/>
+    <rect x="55" y="174" width="490" height="70" rx="14" fill="#e8f5fb"/>
+    <rect x="55" y="268" width="490" height="82" rx="14" fill="#dceff9"/>
+    <rect x="55" y="390" width="490" height="70" rx="14" fill="#fffefa"/>
+  </g>
+  <g fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="78" y="109" font-size="22" font-weight="700">DSL 文本</text>
+    <text x="78" y="136" font-size="17" fill="#526b78">参考已观察到的格式</text>
+    <text x="78" y="203" font-size="22" font-weight="700">Muse 适配器编译</text>
+    <text x="78" y="230" font-size="17" fill="#526b78">模型 / Agent 侧处理受限子集</text>
+    <text x="78" y="294" font-size="17" fill="#526b78">Muse App / Web</text>
+  </g>
+  <rect x="76" y="304" width="448" height="34" rx="9" fill="#fffefa" stroke="#7ba8c1" stroke-width="1.5"/>
+  <text x="92" y="327" fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="20" font-weight="700">隔离 HTML widget（网页盒子）</text>
+  <text x="78" y="419" fill="#19384a" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="22" font-weight="700">宿主状态桥</text>
+  <text x="78" y="446" fill="#526b78" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="17">消息状态保存 / 恢复</text>
+
+  <g fill="none" stroke="#29495c" stroke-width="2.4" stroke-linecap="round">
+    <path d="M300 153 V170" marker-end="url(#app-arrow)"/>
+    <path d="M300 247 V264" marker-end="url(#app-arrow)"/>
+    <path d="M282 354 V386" marker-end="url(#app-arrow)"/>
+  </g>
+  <path d="M322 386 V354" fill="none" stroke="#347ca4" stroke-width="2.4" stroke-linecap="round" marker-end="url(#app-return)"/>
+  <text x="351" y="375" fill="#347ca4" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15" font-weight="600">状态双向同步</text>
+  <text x="55" y="488" fill="#526b78" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15">仅 Muse 受限适配，不代表所有原生 App 均支持。</text>
+  <text x="55" y="507" fill="#526b78" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15">继续对话需宿主动作接口 · 当前未接入。</text>
+</svg>

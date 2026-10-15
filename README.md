@@ -1,92 +1,59 @@
 # Open Intelligent UI
 
-![Open Intelligent UI 天蓝色手绘横幅：代码文档变成滑块、待办列表和图表等交互界面](docs/assets/readme-banner.png)
+![Open Intelligent UI 天蓝色手绘横幅](docs/assets/readme-banner.png)
 
-Open Intelligent UI 是一套独立的交互 UI 协议 v0.1 和 TypeScript / React 参考实现。它将 Markdown 与受限组件 DSL 解析为可交互界面，用消息级状态保存输入，用宿主接口处理需要授权的动作。
+## 功能介绍
 
-这是一个**本地实验项目**，包含基于保存页静态结构开发的 DeepSeek Chrome MV3 扩展；尚未在真实账号页面安装验证，也未发布为 npm 包。它不声称兼容任何网站的私有协议。
+Open Intelligent UI 用独立的组件 DSL，把模型回复中的文字、表单和图表变成可交互界面。滑块、输入框和图表由同一条消息的状态驱动；普通文字仍可与界面混排。这是非官方实现，参考已观察到的 Intelligent UI 输出格式，不保证与 OpenAI 的私有协议完全一致。背景可读 [GPT‑6 与 Intelligent UI 原文](https://openai.com/index/gpt-6-for-everyone/)。
 
-## 快速开始
+以下是本项目 **本地 playground** 在 Mac Chrome 中的真实截图：左侧为可编辑的 DSL，右侧为运行结果；它们不是 DeepSeek 或 Muse 的页面截图。
 
-在仓库目录执行：
+![本地 playground：费用计算器的 DSL 与交互结果](docs/assets/demo-cost.png)
+
+*费用计算器：调整 token 数量、比例或单价，右侧费用即时重算。*
+
+![本地 playground：周度趋势的 DSL 与折线图](docs/assets/demo-trend.png)
+
+*周度趋势：切换 8 周 / 4 周视图，图表随之更新；图中是模拟数据。*
+
+### 本地体验
+
+需要 Node.js 20.19+ 或 22.12+。在仓库根目录运行：
 
 ```bash
 npm install
 npm run dev
 ```
 
-打开 [http://127.0.0.1:5173/](http://127.0.0.1:5173/) 查看交互工作台，或打开 [组件画廊](http://127.0.0.1:5173/test/)。当前 Vite 依赖要求 Node.js 20.19+（20.x）或 22.12+。
+然后打开 [交互工作台](http://127.0.0.1:5173/)；[组件画廊](http://127.0.0.1:5173/test/)展示更多组件。
 
-```bash
-npm test            # 自动化测试
-npm run typecheck   # TypeScript 检查
-npm run build       # 库、JSON Schema 和静态演示
-```
+## 原理：App 与 Chrome 插件如何实现
 
-包目前标记为 `private`。项目还没有 lockfile；此前本机因 npm 注册表 DNS 不通，测试使用已有依赖目录，干净环境的独立安装尚未验证。
+### Chrome 网页
 
-## 一个最小示例
+![Chrome 插件架构：从模型回复到消息内交互 UI](docs/assets/architecture-chrome.svg)
 
-```jsx
-{@body const [count,setCount]=DIL.useState(0)}
-{@body const doubled=count*2}
-<box border padding={3} gap={2}>
-  <title>计数器</title>
-  <text>当前 {count} · 两倍 {doubled}</text>
-  <button onClick={()=>setCount(previous=>previous+1)}>增加</button>
-</box>
-```
+*Chrome：插件识别 DeepSeek 助手正文中的 DSL，流式渲染完整片段；用户交互写回消息状态，关闭后恢复网页原文。*
 
-在实际模型回复中，DSL 应直接写在正文里；这里的代码围栏仅用于文档展示，围栏内容不会被激活。解析器只接受白名单组件和受限表达式，不对模型源码使用 `eval` 或 `new Function`。完整语法见[协议规范](docs/PROTOCOL.zh-CN.md)，用于指导其他模型输出的文本见[提示词](docs/MODEL_PROMPT.zh-CN.md)。
+### Muse App / Web
 
-## 交互工作台
+![Muse 架构：Agent 侧编译 DSL，隔离 widget 通过宿主状态桥保存与恢复](docs/assets/architecture-app.svg)
 
-工作台把可编辑的协议文本和实际解析器、运行时、React 渲染结果放在同一页。它有七个场景：计算器、任务表单、趋势图、控件集锦、模拟评测台，以及需用户明确点击才能运行的俄罗斯方块和画板。可切换 Studio / Citrus 主题与明暗模式。
+*Muse：Agent 侧的适配器将受支持的 DSL 编译成隔离 widget；宿主状态桥保存 / 恢复状态，聊天提交尚未接入。*
 
-![交互工作台结构示意：左侧文本编辑，右侧交互结果](docs/assets/workbench-schematic.svg)
+自有 React 应用可以组合协议解析器、状态运行时和 React 组件自行接入。
 
-*结构示意，非真实截图。场景来源、可操作项与验证情况见[工作台说明](test/playground/README.zh-CN.md)和[本地验证记录](docs/VERIFICATION.zh-CN.md)。*
+OpenAI 的原文介绍的是**原生、可流式组件和编译器**。本项目实现已知格式的解析、运行时与宿主适配，不代表其官方实现。[协议与安全边界](docs/PROTOCOL.zh-CN.md)及 [Muse 适配器说明](packages/muse-app-adapter/README.md)有更完整的细节。
 
-## 实现结构
+## 当前支持的 App / Web
 
-![Open Intelligent UI 数据流：模型文本、流式解析、AST 校验、安全运行时和 React 渲染](docs/assets/architecture.svg)
+| 环境 | 当前状态 | 范围 |
+| --- | --- | --- |
+| DeepSeek Web + Chrome 插件 | 已适配，用户反馈可用 | 识别助手正文中的 DSL；支持流式输出和普通文字 / UI 混排。 |
+| 本地保存的 DeepSeek HTML + Chrome 插件 | 有条件可用 | 需给扩展文件网址权限，并配置匹配该文件的 URL 规则。 |
+| Muse App / Web | 受限子集，用户亲测可用 | 将 DSL 编译为 HTML widget；不是全量协议兼容，不能由 widget 直接提交消息。 |
+| 自有 React 应用 | 可集成 | 可使用解析器、运行时与组件；聊天动作需由应用提供。 |
+| ChatGPT、Claude、Gemini 网页 | 未专门适配 | 尚无对应网页消息适配器。 |
+| DeepSeek 原生 App | 未支持 | Chrome 插件仅作用于网页。 |
 
-- `protocol/`：DSL 解析、结构校验、JSON Schema、受限表达式和消息状态；不依赖 React。
-- `ui/`：组件、渲染器与主题；`packages/react-ui/` 汇总公开的 React 导出。
-- `services/`：站点适配、消息生命周期与独立渲染视图；请求拦截合同仍未配置。
-- `packages/chrome-extension/`：未打包 MV3 扩展装配；静态适配 DeepSeek 的助手正文，可手动加载验证。使用方法见[扩展说明](packages/chrome-extension/README.md)。
-
-项目内可以这样组合解析器与渲染器。以下相对路径以仓库根目录的入口文件为基准：
-
-```tsx
-import { parseDsl, Runtime } from './protocol';
-import { ThemeProvider, UIRenderer } from './packages/react-ui';
-import './ui/styles.css';
-
-const source = '<title>Hello, UI</title>';
-const runtime = new Runtime(parseDsl(source, 'message-1'));
-
-export function Demo() {
-  return <ThemeProvider name="studio" mode="light">
-    <UIRenderer runtime={runtime} />
-  </ThemeProvider>;
-}
-```
-
-构建后可使用包导出路径 `open-intelligent-ui/protocol`、`open-intelligent-ui/react-ui` 与 `open-intelligent-ui/styles.css`；包仍为私有、未发布。主题 token 的可覆盖范围见[主题说明](docs/THEMES.zh-CN.md)。
-
-## 能力与限制
-
-注册表有 61 个名称，其中 **46 个有本地 React 参考映射**。本地图表支持折线、柱、散点和饼图，最多 100 条数据、4 个 series；这是基础实现，没有完整 Tooltip 或复杂轴配置。
-
-`AsyncImage` 与 `AsyncImageGroup` 已有受限宿主：只把两个精确查询解析为本项目自有的 README 横幅和扩展图标，不联网搜图，也不把它们当成其他主题的照片。其余媒体、地图、实体、引用、文件及 `WritingBlock` 等 **11 个宿主组件默认未配置**。本地工作台的 `AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅样本；Chrome 扩展不配置 AppBlock 授权，因此聊天回复中的任意 HTML / JS 都不能运行。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。扩展只读已显示的 DeepSeek 助手正文，真实站点行为尚未验证。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
-
-## 文档
-
-- [协议规范](docs/PROTOCOL.zh-CN.md) · [已捕获格式的证据与边界](docs/CAPTURED_FORMAT.zh-CN.md)
-- [兼容矩阵](docs/COMPATIBILITY.zh-CN.md) · [组件画廊说明](test/README.zh-CN.md)
-- [DeepSeek 扩展静态验证](docs/DEEPSEEK_EXTENSION.zh-CN.md) · [手动加载说明](packages/chrome-extension/README.md)
-- [受限图片宿主与实际演示](docs/IMAGE_HOST.zh-CN.md)
-- [模型提示词与 token 预算](docs/MODEL_PROMPT.zh-CN.md) · [本地验证记录](docs/VERIFICATION.zh-CN.md)
-
-两张配图均为仓库内可维护的 SVG 示意，不是浏览器截图。
+使用与范围详见 [Chrome 插件说明](packages/chrome-extension/README.md)、[组件兼容矩阵](docs/COMPATIBILITY.zh-CN.md)、[AppBlock 安全说明](docs/APPBLOCK.zh-CN.md)、[模型输出提示词](docs/MODEL_PROMPT.zh-CN.md)及[验证记录](docs/DEEPSEEK_EXTENSION.zh-CN.md)。
