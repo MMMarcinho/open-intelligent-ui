@@ -1,0 +1,39 @@
+{@body const [model,setModel]=DIL.useState("gpt6-sol")}
+{@body const [inK,setInK]=DIL.useState(50)}
+{@body const [outK,setOutK]=DIL.useState(5)}
+{@body const m=PRICES[model]}
+{@body const inCost=inK*m.input/1000}
+{@body const outCost=outK*m.output/1000}
+{@body const total=inCost+outCost}
+{@body const totalCny=total*FX}
+<title>Token 价格计算器</title>
+<text class="tui-sub">12 个主流模型 · 美元计价 · 数据更新于 2026-10-15</text>
+<text class="tui-lab">模型</text>
+<select value={model} onChange={setModel} options={MODEL_OPTIONS}/>
+<row class="x-rate">
+<row class="x-cell"><text class="x-k">输入 / 1M tokens</text><text class="x-v">{fmt(m.input)}</text></row>
+<row class="x-cell"><text class="x-k">输出 / 1M tokens</text><text class="x-v">{fmt(m.output)}</text></row>
+</row>
+<text class="tui-lab">输入 tokens · {fmtK(inK)}</text>
+<slider value={inK} onChange={setInK} min={0} max={1000} step={5}/>
+<row>
+<button onClick={()=>setInK(10)}>10K</button>
+<button onClick={()=>setInK(100)}>100K</button>
+<button onClick={()=>setInK(500)}>500K</button>
+<button onClick={()=>setInK(1000)}>1M</button>
+</row>
+<text class="tui-lab">输出 tokens · {fmtK(outK)}</text>
+<slider value={outK} onChange={setOutK} min={0} max={500} step={1}/>
+<row>
+<button onClick={()=>setOutK(1)}>1K</button>
+<button onClick={()=>setOutK(10)}>10K</button>
+<button onClick={()=>setOutK(50)}>50K</button>
+<button onClick={()=>setOutK(100)}>100K</button>
+</row>
+<divider/>
+<row class="x-rrow"><text>输入费用</text><text class="x-val">{fmt(inCost)}</text></row>
+<row class="x-rrow"><text>输出费用</text><text class="x-val">{fmt(outCost)}</text></row>
+<text class="x-glabel">预估总价</text>
+<text class="x-gval">{fmt(total)}</text>
+<text class="x-gcny">≈ {fmtCny(totalCny)}</text>
+<text class="x-foot">公开 API 标准价（美元/每百万 tokens）；DeepSeek 为高峰价，低谷半价；Gemini 3.8 Flash 为优惠价（至 2026-12-31）；汇率 1 USD ≈ 6.69 CNY</text>

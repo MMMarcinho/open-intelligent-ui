@@ -7,5 +7,9 @@
     "declaration": true
   },
   "include": ["protocol", "ui", "services", "packages"],
-  "exclude": ["protocol/export-schema.ts"]
+  "exclude": [
+    "protocol/export-schema.ts",
+    "packages/muse-app-adapter/examples/build-token-calculator.ts",
+    "packages/muse-app-adapter/theme/export-css.ts"
+  ]
 }
