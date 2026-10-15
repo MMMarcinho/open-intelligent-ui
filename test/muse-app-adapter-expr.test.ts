@@ -39,3 +39,15 @@ test('畸形表达式解析失败不崩溃', () => {
   assert.throws(() => parseExpr('(1'));
   assert.throws(() => parseExpr('1 2'));
 });
+
+test('booleans and escaped strings retain their literal values', () => {
+  assert.equal(ev('false'), false);
+  assert.equal(ev('true'), true);
+  for (const value of ['New York', "O'Reilly", 'a\nb\tc', 'C:\\new\\test', '"quoted"', '\u0000']) {
+    assert.equal(ev(JSON.stringify(value)), value);
+  }
+  assert.equal(ev("'it\\'s fine'"), "it's fine");
+  assert.equal(ev('"\\u0041\\x42"'), 'AB');
+  assert.throws(() => ev('"unterminated'));
+  assert.throws(() => ev('"\\uZZZZ"'));
+});

@@ -49,8 +49,10 @@ export function compileDslToWidget(dsl: string, options: CompileOptions = {}): C
 
   const stateDefaults: Record<string, unknown> = {};
   const derived: DerivedDecl[] = [];
+  const setters = new Map<string, string>();
   for (const decl of doc.declarations) {
     if (decl.state && decl.setter) {
+      setters.set(decl.setter, decl.name);
       const v = evalLiteral(decl.expression);
       if (v === undefined) warnings.push(`useState 初值无法求值:${decl.name},已用 null 代替`);
       stateDefaults[decl.name] = v === undefined ? null : v;
@@ -59,7 +61,7 @@ export function compileDslToWidget(dsl: string, options: CompileOptions = {}): C
     }
   }
 
-  const ctx: RenderContext = { hostData: options.hostData ?? {}, warnings };
+  const ctx: RenderContext = { hostData: options.hostData ?? {}, warnings, setters };
   const body = doc.children.map(n => renderNode(n, ctx)).join('');
 
   const script = createWidgetRuntime({
