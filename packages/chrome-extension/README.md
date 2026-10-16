@@ -1,5 +1,19 @@
 # Chrome MV3 扩展（未打包）
 
+## DeepSeek 网页适配范围
+
+本适配器从 `https://chat.deepseek.com/*` 的**助手正文**提取文本，不把用户消息、思考区或网页按钮当作 DSL。默认站点规则以外，只能对用户明确配置的 URL 使用相同的 DeepSeek DOM 适配器；这不代表其它网站已兼容。具体 DOM 依据与回放范围见[验证记录](../../docs/DEEPSEEK_EXTENSION.zh-CN.md)，通用 DSL 语义和标签分组见[能力总览](../../docs/CAPABILITIES.zh-CN.md)。
+
+| 能力 | 当前行为 |
+| --- | --- |
+| 标签 | [46 个本地 React 名称](../../docs/COMPATIBILITY.zh-CN.md)具有各自的参考子集实现；不能把注册表里的宿主名称视为已接服务。`CodeBlock` 展示原文，`Chart` 仅基础图表。 |
+| 表达式和状态 | `{@body}`、组件内插值、`{#if}` / `{#each}` 与受限表达式；控件操作更新当前消息的 `DIL.useState`，回复正文更新时保留同实例状态。 |
+| 混排和流式 | 在原文位置投影完整安全前缀；普通文字和多个 UI 根按顺序保留。关闭扩展后恢复网站原文。 |
+| 宿主资源 | 只将 `AsyncImage` 的两个精确查询映射到项目自有图片；图片组可复用单图组件，但无任意图片搜索。`AppBlock` 无授权宿主，不能运行。 |
+| 宿主动作 | 无 `requestAction`；`GenUI.copy`、`GenUI.issueNewTurn` 不执行。不会发送聊天消息或控制用户机器。 |
+
+保存页 DOM 和隔离浏览器回放有测试；它们不能证明在线 DeepSeek 页面后续 DOM 版本、账号页注入和真实模型输出都兼容。
+
 在仓库根目录运行 `npm run build:extension`，然后在 Chrome 的 `chrome://extensions` 打开开发者模式，选择“加载已解压的扩展程序”，指向 `dist/chrome-extension/`。本轮没有向用户的 Chrome 安装扩展或替用户批准权限。生成目录由 Git 忽略，包含本地打包的脚本和样式，不依赖 CDN。
 
 默认只在 `https://chat.deepseek.com/*` 注入。点击扩展图标可切换持久化总开关，并查看当前标签页是否已启用协议渲染；这里不显示已渲染回复数量，也没有单页关闭开关。点击“打开设置”会通过 Chrome 的 `options_ui` 在独立标签页打开设置页。默认 DeepSeek 页面、自定义规则、适配器和权限说明都在设置页。关闭总开关会断开页面观察并恢复原文。扩展只读取已出现的助手正文，不发送对话、不拦截请求。

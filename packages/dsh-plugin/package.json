@@ -1,0 +1,25 @@
+{
+  "name": "open-intelligent-ui-dsh-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open Intelligent UI in DeepSeek Harness Web and Desktop conversations",
+  "engines": { "node": ">=24", "dsh": "0.2.0-rc.2" },
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "inject": ["@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-renderer"],
+      "external": ["@deepseek-ai/dsh-client-ui-primitives"]
+    }
+  },
+  "files": ["lib", "cordis.patch.yml", "prompt.txt"],
+  "scripts": { "build": "node build.mjs" }
+}

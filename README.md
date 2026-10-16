@@ -43,17 +43,18 @@ npm run dev
 
 自有 React 应用可以组合协议解析器、状态运行时和 React 组件自行接入。
 
-OpenAI 的原文介绍的是**原生、可流式组件和编译器**。本项目实现已知格式的解析、运行时与宿主适配，不代表其官方实现。[协议与安全边界](docs/PROTOCOL.zh-CN.md)及 [Muse 适配器说明](packages/muse-app-adapter/README.md)有更完整的细节。
+OpenAI 的原文介绍的是**原生、可流式组件和编译器**。本项目实现已知格式的解析、运行时与宿主适配，不代表其官方实现。先看[当前能力总览](docs/CAPABILITIES.zh-CN.md)，协议和安全边界见[协议说明](docs/PROTOCOL.zh-CN.md)。
 
 ## 当前支持的 App / Web
 
 | 环境 | 当前状态 | 范围 |
 | --- | --- | --- |
 | DeepSeek Web + Chrome 插件 | 已适配，用户反馈可用 | 识别助手正文中的 DSL；支持流式输出和普通文字 / UI 混排。 |
+| DeepSeek Harness Web / Desktop | 本地 `0.2.0-rc.2` 已加载验证 | 在助手文本块中混排 Markdown / IUI、预览流式安全前缀、保留本地交互状态；未接宿主动作。 |
 | 本地保存的 DeepSeek HTML + Chrome 插件 | 有条件可用 | 需给扩展文件网址权限，并配置匹配该文件的 URL 规则。 |
 | Muse App / Web | 受限子集，用户亲测可用 | 将 DSL 编译为 HTML widget；不是全量协议兼容，不能由 widget 直接提交消息。 |
 | 自有 React 应用 | 可集成 | 可使用解析器、运行时与组件；聊天动作需由应用提供。 |
 | ChatGPT、Claude、Gemini 网页 | 未专门适配 | 尚无对应网页消息适配器。 |
 | DeepSeek 原生 App | 未支持 | Chrome 插件仅作用于网页。 |
 
-使用与范围详见 [Chrome 插件说明](packages/chrome-extension/README.md)、[组件兼容矩阵](docs/COMPATIBILITY.zh-CN.md)、[AppBlock 安全说明](docs/APPBLOCK.zh-CN.md)、[模型输出提示词](docs/MODEL_PROMPT.zh-CN.md)及[验证记录](docs/DEEPSEEK_EXTENSION.zh-CN.md)。
+按环境查看 [DeepSeek 网页适配器](packages/chrome-extension/README.md)、[dsh 插件](packages/dsh-plugin/README.md)、[Muse 适配器](packages/muse-app-adapter/README.md)。标签、渲染与宿主能力的差异见[能力总览](docs/CAPABILITIES.zh-CN.md)和[组件兼容矩阵](docs/COMPATIBILITY.zh-CN.md)；另见[AppBlock 安全说明](docs/APPBLOCK.zh-CN.md)、[模型输出提示词](docs/MODEL_PROMPT.zh-CN.md)及[验证记录](docs/DEEPSEEK_EXTENSION.zh-CN.md)。

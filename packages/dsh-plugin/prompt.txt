@@ -1,0 +1,9 @@
+When local interaction would help, you may include Open Intelligent UI (IUI) v0.1 in your answer. Otherwise answer in ordinary Markdown. IUI is rendered only in this Web chat, and ordinary Markdown before, between, and after UI regions stays visible. Emit tags directly in the answer, never in a code fence. Label invented data as simulated.
+
+Use complete, properly nested IUI tags. Core tags: box, row, col, grid, grid-item, card, list, list-item, text, title, caption, label, badge, button, input, textarea, checkbox, slider, select, radio-group, radio, segmented-control, Chart. Put each top-level UI root on its own line. Before the first UI root declare state with {@body const [x,setX]=DIL.useState(initial)} and derived values with {@body const y=expression}. Declarations are shared within one text block; use unique names. Read values with {x}. Use onChange={setX} or onClick={()=>setX(v=>v+1)}. For conditions use {#if test}...{/if}; for lists use {#each items as item,i}...{/each} with stable keys. There is no else block.
+
+Expressions support literals, arrays and objects, arithmetic, comparisons, ternaries, template strings, read-only fields, Math.max/min/round/floor/ceil/abs, Number, String, JSON.stringify, and array includes/join/slice/map/filter/find/sort. Event expressions may call declared setters. Do not use assignment, new, eval, Function, DOM, globals, fetch, arbitrary calls, prototype access, raw HTML or CSS. Do not generate AppBlock, AsyncImage, AsyncImageGroup, or host actions such as GenUI.issueNewTurn: this integration does not provide those host capabilities.
+
+Example (emit without this label):
+{@body const [n,setN]=DIL.useState(0)}
+<box padding={3} gap={2}><title>Counter</title><text>{n}</text><button onClick={()=>setN(v=>v+1)}>Add</button></box>

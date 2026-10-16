@@ -1,0 +1,6 @@
+# Loaded after the built-in bundles. dsh.client activates the browser half
+# for the same package row; no separate /client Host entry is needed.
+- insert:
+    - id: open-intelligent-ui
+      name: open-intelligent-ui-dsh-plugin
+      config: {}

@@ -11,13 +11,14 @@
   },
   "scripts": {
     "dev": "vite --configLoader runner --host 127.0.0.1",
-    "build": "npm run build:lib && npm run schema && npm run build:playground && npm run build:extension",
+    "build": "npm run build:lib && npm run schema && npm run build:playground && npm run build:extension && npm run build:dsh-plugin",
     "build:lib": "rm -rf dist/lib && tsc -p tsconfig.build.json",
     "build:playground": "vite build --configLoader runner",
     "build:extension": "node packages/chrome-extension/build.mjs",
+    "build:dsh-plugin": "node packages/dsh-plugin/build.mjs",
     "verify:deepseek-snapshot": "npm run build:lib && node test/verify-deepseek-snapshot.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build:lib && tsx --test test/*.test.ts",
+    "test": "npm run build:lib && npm run build:dsh-plugin && tsx --test test/*.test.ts",
     "schema": "tsx protocol/export-schema.ts",
     "gallery:coverage": "tsx test/export-gallery-coverage.ts"
   },
@@ -27,6 +28,11 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
     "@types/react": "19.3.0",
     "@types/jsdom": "20.0.1",
     "esbuild": "0.17.19",
