@@ -2,6 +2,7 @@
   "name": "open-intelligent-ui",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "exports": {
     "./protocol": { "types": "./dist/lib/protocol/index.d.ts", "import": "./dist/lib/protocol/index.js" },
