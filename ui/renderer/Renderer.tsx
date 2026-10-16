@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ThemeProvider } from '../theme/index.js';
+import { ThemeProvider, type ThemeMode } from '../theme/index.js';
 import { byName, safeColor, safeCssSize, type Attribute, type Node, type Runtime } from '../../protocol/index.js';
 import { Text, Title, Caption, Badge, Code, MathText, Label, Bold, Italic, Underline, Strikethrough, Icon, Blockquote, CodeBlock } from '../components/text/index.js';
 import { Box, Row, Column, Flow, Card, Grid, GridItem, FlowItem, CarouselItem, Divider, Spacer, Table, TableRow, TableCell, List, ListItem, Popover, PopoverTrigger, PopoverContent, Carousel } from '../components/layout/index.js';
@@ -9,7 +9,7 @@ import { Chart } from '../components/visualization/index.js';
 import { AppBlock, AsyncImage, AsyncImageGroup, UnconfiguredHost, UnsupportedComponent } from '../components/media/index.js';
 import { renderMarkdownText } from './markdown.js';
 
-type Props={runtime:Runtime;showPlainText?:boolean;targets?:HTMLElement[]};
+type Props={runtime:Runtime;showPlainText?:boolean;targets?:HTMLElement[];themeMode?:ThemeMode};
 type Scope=Record<string,unknown>;
 const get=(a:Attribute|undefined,scope:Scope,runtime:Runtime):unknown=>{if(!a)return undefined;if(a.kind==='literal')return a.value;try{return runtime.value(String(a.value),scope);}catch{return undefined;}};
 const asOptions=(value:unknown):SelectOption[]=>Array.isArray(value)?value.slice(0,100).filter((x):x is {label:unknown;value:unknown}=>!!x&&typeof x==='object'&&'label'in x&&'value'in x).map(x=>({label:String(x.label),value:String(x.value)})):[];
@@ -39,7 +39,7 @@ function resolvedStyle(read:(name:string)=>unknown):React.CSSProperties {
   if(read('block'))style.width='100%';
   return style;
 }
-export function UIRenderer({runtime,showPlainText=false,targets}:Props){
+export function UIRenderer({runtime,showPlainText=false,targets,themeMode='light'}:Props){
   const [,revision]=useState(0),scope=runtime.scope();
   const force=()=>revision(v=>v+1);
   const render=(n:Node,key:React.Key,env:Scope=scope):React.ReactNode=>{
@@ -114,6 +114,6 @@ export function UIRenderer({runtime,showPlainText=false,targets}:Props){
     }
   };
   if (targets) return <>{runtime.document.children.map((node, index) =>
-    targets[index] ? createPortal(<ThemeProvider name="studio" mode="light"><div className="iui-root">{render(node, index)}</div></ThemeProvider>, targets[index], index) : null)}</>;
+    targets[index] ? createPortal(<ThemeProvider name="studio" mode={themeMode}><div className="iui-root">{render(node, index)}</div></ThemeProvider>, targets[index], index) : null)}</>;
   return <div className="iui-root">{runtime.document.children.map((n,i)=>render(n,i))}</div>;
 }

@@ -2,6 +2,8 @@
 
 把 open-intelligent-ui DSL 文档编译成可在 **Muse 聊天（App / 网页）** 里渲染的 HTML widget 片段。零产品改动：Muse 团队不需要为此发版。
 
+这是[通用协议能力](../../docs/CAPABILITIES.zh-CN.md)的**编译子集**，不使用 React 渲染器。实际标签仅为下表的 10 个；解析器认得的其它标签不会自动获得 Muse 实现。表达式使用 widget 内白名单解释器，其支持的语法也比 React 运行时少。
+
 ## 架构
 
 ```
@@ -9,7 +11,7 @@ DSL 文本 --parseDsl--> AST --compileDslToWidget--> HTML 片段 --widget.create
                               |                                            |
                         状态:DIL.useState <----------------------> window.hatchWidget (消息级持久)
                         表达式:{...}      <----------------------> widget 端白名单求值器(无 eval)
-                        宿主动作:GenUI.issueNewTurn <------------> send_message 原生行 / 读 widget.state
+                        会话续接:agent 另发原生消息 / 读 widget.state（非 widget 直接发送）
 ```
 
 在这个模型里，**agent 本人就是宿主适配器**：解析、编译、创建 widget 都由 agent 完成，DSL 是 agent 内部的中转格式，用户永远看不到它。这和 `packages/chrome-extension` 正好互补：扩展是"注入进不合作的宿主（第三方网页）"，本适配器是"在合作的沙盒（Muse App）里渲染"。
@@ -58,6 +60,8 @@ const { html, warnings } = compileDslToWidget(dsl, { messageId: 'msg-1' });
 
 `{#if}` / `{#each}`、`input`、`checkbox` 等暂不支持（见路线图），遇到会记 warning 并跳过。
 
+`AppBlock`、`AsyncImage` / `AsyncImageGroup`、`Chart`、`CodeBlock` 等不在这 10 个标签内。未知标签、条件和循环只产生 warning 并跳过；按钮事件超出白名单时按钮禁用并记录 warning。普通文字可放在 widget 内，但 Muse 适配器不会扫描或替换现有聊天消息中的 Markdown / DSL 混排；由 agent 决定何时创建 widget。
+
 ## 主题
 
 `theme.ts` 导出两层：
@@ -87,6 +91,7 @@ const { html, warnings } = compileDslToWidget(dsl, { messageId: 'msg-1' });
 - HTML 1MB 上限，widget 必须自包含。
 - HTML widget 没有直接发消息的 JS API；需要新一轮对话时，配 `send_message` 原生行，或等用户发消息后读 `widget.state`。
 - 流式场景下更新等于重建，状态迁移由 agent 完成。
+- 未接 `GenUI.copy`、`GenUI.issueNewTurn` 或本机系统动作；不能把 React 宿主动作示例直接移到 widget。
 
 ## 路线图
 
