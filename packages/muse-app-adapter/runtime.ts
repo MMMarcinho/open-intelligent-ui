@@ -23,11 +23,17 @@ export interface WidgetRuntimeOptions {
   defaults: Record<string, unknown>;
 }
 
+/** Escape HTML raw-text delimiters as well as JS line separators. */
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, c =>
+    '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+
 export function createWidgetRuntime(opts: WidgetRuntimeOptions): string {
   const evaluatorSrc = serializeEvaluator();
-  const hostJson = JSON.stringify(opts.hostData);
-  const derivedJson = JSON.stringify(opts.derived);
-  const defaultsJson = JSON.stringify(opts.defaults);
+  const hostJson = scriptJson(opts.hostData);
+  const derivedJson = scriptJson(opts.derived);
+  const defaultsJson = scriptJson(opts.defaults);
 
   return `(function(){
 "use strict";
@@ -74,13 +80,13 @@ function paint(){
   }
 }
 
-var sels = document.querySelectorAll('select[data-bind]');
+var sels = document.querySelectorAll('select[data-change]');
 for (var i = 0; i < sels.length; i++) (function(el){
-  el.addEventListener('change', function(){ var p = {}; p[el.getAttribute('data-bind')] = el.value; set(p); });
+  el.addEventListener('change', function(){ if (el.disabled) return; var p = {}; p[el.getAttribute('data-change')] = el.value; set(p); });
 })(sels[i]);
-var rngs = document.querySelectorAll('input[type=range][data-bind]');
+var rngs = document.querySelectorAll('input[type=range][data-change]');
 for (var i = 0; i < rngs.length; i++) (function(el){
-  el.addEventListener('input', function(){ var p = {}; p[el.getAttribute('data-bind')] = Number(el.value); set(p); });
+  el.addEventListener('input', function(){ if (el.disabled) return; var p = {}; p[el.getAttribute('data-change')] = Number(el.value); set(p); });
 })(rngs[i]);
 var btns = document.querySelectorAll('[data-set]');
 for (var i = 0; i < btns.length; i++) (function(el){
