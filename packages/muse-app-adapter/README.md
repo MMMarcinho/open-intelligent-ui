@@ -53,14 +53,16 @@ const { html, warnings } = compileDslToWidget(dsl, { messageId: 'msg-1' });
 | `box` | 内容卡片 |
 | `row` / `col` | 横向 / 纵向 flex 布局 |
 | `title` / `text` | 标题 / 正文，`{expr}` 内联表达式 |
-| `select` | 下拉，`options={IDENT}` 取自 `hostData` |
-| `slider` | 滑杆，传数值（`min/max/step`） |
-| `button` | `onClick` 只接受 `()=>setX(字面量)` 与 `()=>setX(prev=>prev±n)`，其他降级为禁用按钮 + warning |
+| `select` | 下拉，`options={IDENT}` 取自 `hostData`，`onChange={setter}` 按声明映射状态 |
+| `slider` | 滑杆，传数值（`min/max/step`），支持字面量或常量表达式 |
+| `button` | `onClick` 只接受 `()=>setX(字面量)` 与 `()=>setX(prev=>prev±n)`，setter 使用 `DIL.useState` 声明的名称映射，其他降级为禁用按钮 + warning |
 | `divider` / `spacer` | 分隔线 / 留白 |
 
 `{#if}` / `{#each}`、`input`、`checkbox` 等暂不支持（见路线图），遇到会记 warning 并跳过。
 
 `AppBlock`、`AsyncImage` / `AsyncImageGroup`、`Chart`、`CodeBlock` 等不在这 10 个标签内。未知标签、条件和循环只产生 warning 并跳过；按钮事件超出白名单时按钮禁用并记录 warning。普通文字可放在 widget 内，但 Muse 适配器不会扫描或替换现有聊天消息中的 Markdown / DSL 混排；由 agent 决定何时创建 widget。
+
+`select` / `slider` 的 `value={state}` 负责显示，`onChange={setter}` 或 `onChange={value => setter(value)}` 负责更新；缺失或不支持的处理器会禁用控件并记 warning。
 
 ## 主题
 
@@ -84,6 +86,7 @@ const { html, warnings } = compileDslToWidget(dsl, { messageId: 'msg-1' });
 
 - 编译器不执行 DSL 中的任何代码；文本全部转义后走 `textContent` 语义。
 - 表达式走手写递归下降求值器（`expr.ts`），无 `eval`/`new Function`；拒绝方法调用、`constructor`/`__proto__`/`prototype`、未知标识符。`expr.ts` 的函数均为纯函数，经 `Function.toString` 序列化内联进 widget，无需打包器（约束见文件头注释）。
+- JSON 数据嵌入脚本前转义 HTML raw-text 分隔符；字符串中的空格、引号和换行保持为数据。
 - 产物不含 `<form>`、localStorage/IndexedDB、外链可执行资源；远端图片需使用稳定的公开 URL（widget 随历史回放）。
 
 ## 限制
