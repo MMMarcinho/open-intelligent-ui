@@ -55,6 +55,7 @@ npm run build       # 库、JSON Schema 和静态演示
 - `ui/`：组件、渲染器与主题；`packages/react-ui/` 汇总公开的 React 导出。
 - `services/`：站点适配、消息生命周期与独立渲染视图；请求拦截合同仍未配置。
 - `packages/chrome-extension/`：未打包 MV3 扩展装配；静态适配 DeepSeek 的助手正文，可手动加载验证。使用方法见[扩展说明](packages/chrome-extension/README.md)。
+- `packages/dsh-plugin/`：DeepSeek Harness Web / Desktop 的助手消息渲染插件；使用方法见[插件说明](packages/dsh-plugin/README.md)。
 
 项目内可以这样组合解析器与渲染器。以下相对路径以仓库根目录的入口文件为基准：
 
@@ -77,12 +78,21 @@ export function Demo() {
 
 ## 能力与限制
 
+| 环境 | 当前接线 | 边界 |
+| --- | --- | --- |
+| DeepSeek 网页 + Chrome 扩展 | 助手正文中的 DSL、普通文字混排、流式安全前缀与本地交互状态 | 只解析两个精确项目图片查询；不发送消息 |
+| DeepSeek Harness Web / Desktop | 助手文本块中的 Markdown / IUI、流式安全前缀与本地交互状态 | 未接图片、`AppBlock`、回传会话或本机系统动作 |
+| Muse App / Web | Agent 将 10 个标签的子集编译成 HTML widget，状态经 widget 桥保存 | 不自动替换聊天正文，不支持流式增量更新或 widget 直接发消息 |
+
+标签能被解析不等于适配器实现了同名宿主能力。详细差异见[当前能力总览](docs/CAPABILITIES.zh-CN.md)，三个适配器分别见[DeepSeek 网页](packages/chrome-extension/README.md)、[dsh](packages/dsh-plugin/README.md)和[Muse](packages/muse-app-adapter/README.md)。
+
 注册表有 61 个名称，其中 **46 个有本地 React 参考映射**。本地图表支持折线、柱、散点和饼图，最多 100 条数据、4 个 series；这是基础实现，没有完整 Tooltip 或复杂轴配置。
 
 `AsyncImage` 与 `AsyncImageGroup` 已有受限宿主：只把两个精确查询解析为本项目自有的 README 横幅和扩展图标，不联网搜图，也不把它们当成其他主题的照片。其余媒体、地图、实体、引用、文件及 `WritingBlock` 等 **11 个宿主组件默认未配置**。本地工作台的 `AppBlock` 仅能在用户点击后运行两份内容与身份精确匹配的已审阅样本；Chrome 扩展不配置 AppBlock 授权，因此聊天回复中的任意 HTML / JS 都不能运行。`CodeBlock` 仅展示原文，不执行 TSX 或 Mermaid；模型提供的任意 `svg` 会被拒绝。扩展只读已显示的 DeepSeek 助手正文，真实站点行为尚未验证。逐项状态见[兼容矩阵](docs/COMPATIBILITY.zh-CN.md)，AppBlock 的隔离边界见[专门说明](docs/APPBLOCK.zh-CN.md)。
 
 ## 文档
 
+- [当前能力与适配范围](docs/CAPABILITIES.zh-CN.md) · [dsh 插件](packages/dsh-plugin/README.md) · [Muse 适配器](packages/muse-app-adapter/README.md)
 - [协议规范](docs/PROTOCOL.zh-CN.md) · [已捕获格式的证据与边界](docs/CAPTURED_FORMAT.zh-CN.md)
 - [兼容矩阵](docs/COMPATIBILITY.zh-CN.md) · [组件画廊说明](test/README.zh-CN.md)
 - [DeepSeek 扩展静态验证](docs/DEEPSEEK_EXTENSION.zh-CN.md) · [手动加载说明](packages/chrome-extension/README.md)
