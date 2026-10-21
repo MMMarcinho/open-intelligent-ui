@@ -53,7 +53,7 @@ npm run build       # 库、JSON Schema 和静态演示
 
 - `protocol/`：DSL 解析、结构校验、JSON Schema、受限表达式和消息状态；不依赖 React。
 - `ui/`：组件、渲染器与主题；`packages/react-ui/` 汇总公开的 React 导出。
-- `services/`：站点适配、消息生命周期与独立渲染视图；请求拦截合同仍未配置。
+- `services/`：站点适配、消息生命周期与独立渲染视图；DeepSeek 网页可选[统一智能 UI 开关](docs/CHROME_INTELLIGENT_LAYOUT.zh-CN.md)，经核实的发送契约独立于通用渲染层。
 - `packages/chrome-extension/`：未打包 MV3 扩展装配；静态适配 DeepSeek 的助手正文，可手动加载验证。使用方法见[扩展说明](packages/chrome-extension/README.md)。
 - `packages/dsh-plugin/`：DeepSeek Harness Web / Desktop 的助手消息渲染插件；使用方法见[插件说明](packages/dsh-plugin/README.md)。
 

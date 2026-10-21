@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Open Intelligent UI Preview",
-  "version": "0.2.1",
-  "version_name": "0.2.1-stream",
-  "description": "Render valid Open Intelligent UI replies on supported chat sites.",
+  "version": "0.4.0",
+  "version_name": "0.4.0-unified-iui",
+  "description": "Render Open Intelligent UI replies and optionally attach IUI rules to a DeepSeek message.",
   "permissions": ["storage", "scripting", "activeTab"],
   "optional_host_permissions": ["http://*/*", "https://*/*", "file:///*"],
   "background": { "service_worker": "background.js" },
@@ -11,6 +11,11 @@
   "action": { "default_title": "Open Intelligent UI", "default_popup": "popup.html", "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png" } },
   "options_ui": { "page": "options.html", "open_in_tab": true },
   "content_scripts": [{
+    "matches": ["https://chat.deepseek.com/*"],
+    "js": ["page-bridge.js"],
+    "world": "MAIN",
+    "run_at": "document_start"
+  }, {
     "matches": ["https://chat.deepseek.com/*"],
     "js": ["content.js"],
     "css": ["hidden.css"],

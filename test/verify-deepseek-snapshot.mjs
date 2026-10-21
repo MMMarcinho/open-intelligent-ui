@@ -152,7 +152,10 @@ try {
   body.append(replay.window.document.createTextNode('\n<caption>Replay update</caption>'));
   coordinator.scan();
   await new Promise(resolve => setTimeout(resolve, 40));
-  assert.match(shadow.querySelector('.iui-root').textContent, /Replay update/);
+  // A newly appended UI region can have its own shadow host after mixed-prose support.
+  const updatedText = [...replay.window.document.querySelectorAll('[data-iui-preview]')]
+    .map(host => host.shadowRoot?.querySelector('.iui-root')?.textContent ?? '').join('\n');
+  assert.match(updatedText, /Replay update/);
   assert.equal(shadow.querySelectorAll('input[type=range]')[0].value, selectedValue);
   coordinator.setEnabled(false);
   assert.equal(body.hasAttribute('data-iui-original-hidden'), false);

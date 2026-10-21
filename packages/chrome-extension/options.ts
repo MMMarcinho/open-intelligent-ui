@@ -94,7 +94,7 @@ async function saveSettings(message: string): Promise<boolean> {
   return true;
 }
 
-toggle.addEventListener('change', () => { settings.enabled = toggle.checked; void saveSettings(settings.enabled ? '回复渲染已开启。' : '回复渲染已关闭，网页原文可见。'); });
+toggle.addEventListener('change', () => { settings.enabled = toggle.checked; void saveSettings(settings.enabled ? '智能 UI 已开启：DeepSeek 规则注入与回复渲染同时启用。' : '智能 UI 已关闭：不注入、不渲染，网页原文可见。'); });
 defaultToggle.addEventListener('change', () => { settings.defaultDeepSeek = defaultToggle.checked; void saveSettings(settings.defaultDeepSeek ? '默认页面已开启。' : '默认页面已关闭。'); });
 cancelEdit.addEventListener('click', () => { cancelEditing(); inform(''); patternInput.focus(); });
 form.addEventListener('submit', event => {
