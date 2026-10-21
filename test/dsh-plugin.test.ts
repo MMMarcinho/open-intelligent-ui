@@ -10,18 +10,23 @@ import { splitReply } from '../packages/dsh-plugin/src/segments.js';
 const require = createRequire(import.meta.url);
 const source = '{@body const [n,setN]=DIL.useState(0)}\n<box><text>{n}</text><button onClick={()=>setN(v=>v+1)}>Add</button></box>';
 
-test('host bundle registers IUI guidance in dsh system prompt', async () => {
+test('host prompt includes IUI guidance only while the live mode is enabled', async () => {
   const bundleUrl = new URL('../packages/dsh-plugin/lib/index.js', import.meta.url).href;
   const host = await import(bundleUrl);
-  let section: { name: string; order: number; text: string; interpolate: boolean } | undefined;
+  let section: { name: string; order: number; text: () => string; interpolate: boolean } | undefined;
+  let enabled = false;
   host.apply({ systemPrompt: {
     getSectionOrder(name: string) { assert.equal(name, 'WEB_SURFACE'); return 100; },
     section(value: typeof section) { section = value; },
-  } } as never);
+  } } as never, { enabled: { get: () => enabled } } as never);
   assert.equal(section?.name, 'open-intelligent-ui:v0.1');
   assert.equal(section.order, 101);
   assert.equal(section.interpolate, false);
-  assert.match(section.text, /DIL\.useState/);
+  assert.equal(section.text(), '');
+  enabled = true;
+  assert.match(section.text(), /DIL\.useState/);
+  enabled = false;
+  assert.equal(section.text(), '');
 });
 
 test('dsh text projection preserves Markdown order and previews a streaming IUI root', () => {
@@ -35,7 +40,7 @@ test('dsh text projection preserves Markdown order and previews a streaming IUI 
   assert.equal(splitReply('`<box>example</box>`', 'dsh-test'), null);
 });
 
-test('built browser bundle registers the dsh assistant-step renderer and keeps local state', async () => {
+test('browser composer mode controls rendering and persists across assistant updates', async () => {
   const dom = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/' });
   const previous = {
     window: globalThis.window,
@@ -59,18 +64,37 @@ test('built browser bundle registers the dsh assistant-step renderer and keeps l
     });
     assert.equal(entry?.id, 'open-intelligent-ui-dsh-plugin');
     const plugin = entry!.factory((name: string) => name === '@deepseek-ai/dsh-client-ui-primitives'
-      ? { MarkdownText: ({ text }: { text: string }) => React.createElement('span', null, text) }
+      ? {
+          MarkdownText: ({ text }: { text: string }) => React.createElement('span', { 'data-markdown': '' }, text),
+          Button: ({ children, variant: _variant, size: _size, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => React.createElement('button', props, children),
+        }
       : require(name));
     let renderer: React.ComponentType<Record<string, unknown>> | undefined;
+    let button: React.ComponentType<Record<string, unknown>> | undefined;
+    let snapshot = { status: 'ready', value: { enabled: false }, writable: true, mode: 'host' };
+    const listeners = new Set<() => void>();
+    const form = {
+      getSnapshot: () => snapshot,
+      subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); },
+      async set(field: string, value: boolean) {
+        assert.equal(field, 'enabled');
+        snapshot = { ...snapshot, value: { enabled: value } };
+        for (const listener of listeners) listener();
+        return true;
+      },
+    };
     plugin.apply({ slots: {
-      inject(key: string, callback: () => void) { assert.equal(key, 'conversation.chat.node'); callback(); return () => {}; },
-      register(options: { name: string; key: string }, component: typeof renderer) {
-        assert.deepEqual({ name: options.name, key: options.key }, { name: 'conversation.chat.node', key: 'assistant-step' });
-        renderer = component;
+      inject(_key: string, callback: () => void) { callback(); return () => {}; },
+      register(options: { name: string; key?: string }, component: typeof renderer) {
+        if (options.name === 'conversation.chat.node') {
+          assert.equal(options.key, 'assistant-step');
+          renderer = component;
+        } else if (options.name === 'conversation.input.left') button = component;
+        else assert.fail(`unexpected slot ${options.name}`);
         return () => {};
       },
-    } });
-    assert.ok(renderer);
+    }, configForms: { get(name: string) { assert.equal(name, 'open-intelligent-ui'); return form; } } });
+    assert.ok(renderer && button);
     const { createRoot } = await import('react-dom/client');
     const { act } = React;
     const mount = dom.window.document.createElement('div');
@@ -78,18 +102,28 @@ test('built browser bundle registers the dsh assistant-step renderer and keeps l
     const root = createRoot(mount);
     const node = { key: 'reply-1', data: { blocks: [{ kind: 'text', text: source }], status: 'running' } };
     await act(async () => root.render(React.createElement(React.StrictMode, null,
-      React.createElement(renderer!, { node, renderMessageImages: () => null }))));
+      React.createElement(button!), React.createElement(renderer!, { node, renderMessageImages: () => null }))));
+    const toggle = mount.querySelector<HTMLButtonElement>('[data-iui-dsh-toggle]')!;
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(mount.querySelector('[data-iui-dsh-root]'), null);
+    assert.match(mount.textContent ?? '', /<box>/);
+    await act(async () => toggle.click());
+    assert.equal(toggle.getAttribute('aria-pressed'), 'true');
     const shadow = mount.querySelector('[data-iui-dsh-root]')?.shadowRoot;
     assert.ok(shadow);
     assert.equal(shadow.querySelector('button')?.textContent, 'Add');
     assert.match(shadow.textContent ?? '', /0/);
     await act(async () => shadow.querySelector('button')!.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })));
     assert.match(shadow.textContent ?? '', /1/);
-    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(renderer!, {
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
       node: { ...node, data: { ...node.data, blocks: [{ kind: 'text', text: `${source}\nDone` }] } },
       renderMessageImages: () => null,
     }))));
     assert.match(shadow.textContent ?? '', /1/);
+    assert.equal(mount.querySelector<HTMLButtonElement>('[data-iui-dsh-toggle]')?.getAttribute('aria-pressed'), 'true');
+    await act(async () => mount.querySelector<HTMLButtonElement>('[data-iui-dsh-toggle]')!.click());
+    assert.equal(mount.querySelector('[data-iui-dsh-root]'), null);
+    assert.match(mount.textContent ?? '', /<box>/);
     await act(async () => root.unmount());
   } finally {
     Object.assign(globalThis, previous);

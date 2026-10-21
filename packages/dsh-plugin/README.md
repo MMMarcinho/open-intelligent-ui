@@ -1,6 +1,12 @@
 # Open Intelligent UI for DeepSeek Harness Web / Desktop
 
-This package adds IUI v0.1 to assistant messages in the **DSH Web and Desktop profiles**. It uses DSH's system prompt section and keyed `conversation.chat.node` slot; it does not change the conversation transport. Ordinary Markdown remains in the reply, and IUI roots render in place. The Desktop shell loads the plugin's `web` client bundle through its own carrier. The integration was built against `@deepseek-ai/dsh` `0.2.0-rc.2`. See the [shared capability guide](../../docs/CAPABILITIES.zh-CN.md) and [component matrix](../../docs/COMPATIBILITY.zh-CN.md); a registry name alone is not a host capability.
+This package adds IUI v0.1 to assistant messages in the **DSH Web and Desktop profiles**. It uses DSH's system prompt section, the `conversation.input.left` composer slot, the Host settings form, and keyed `conversation.chat.node` slot; it does not change the conversation transport. Ordinary Markdown remains in the reply, and IUI roots render in place when enabled. The Desktop shell loads the plugin's `web` client bundle through its own carrier. The integration was built against `@deepseek-ai/dsh` `0.2.0-rc.2`. See the [shared capability guide](../../docs/CAPABILITIES.zh-CN.md) and [component matrix](../../docs/COMPATIBILITY.zh-CN.md); a registry name alone is not a host capability.
+
+## Intelligent UI switch
+
+The **智能 UI** button sits in the composer toolbar next to DSH's native controls. It uses the plugin's live Host setting (`open-intelligent-ui.enabled`), shared by Web and Desktop profiles only when each profile points to the same Host settings document. The default is off. On enables both the extra system-prompt section and IUI rendering; off removes the section from the assembled prompt and displays every existing reply as its original Markdown, including any IUI markup. Sending a message does not reset the setting. The button stays disabled if the Host settings form cannot be read or saved, so the UI cannot claim a mode the Host has not accepted.
+
+This checkout is a development build. The separately installed npm `0.1.0` package is unchanged until a later authorized release and installation.
 
 ## Build and install from this checkout
 
@@ -23,7 +29,7 @@ dsh plugin --profile web remove open-intelligent-ui-dsh-plugin
 
 ## Try it
 
-Paste this into a DSH Web chat:
+Turn on **智能 UI** in the composer, then paste this into a DSH Web chat:
 
 ```text
 请直接输出下面的内容，不要使用代码围栏，不要调用工具，也不要解释标签。普通 Markdown 要留在卡片前后；IUI 标签必须原样输出。
@@ -42,8 +48,8 @@ Expected: Markdown above and below the card remains visible; the card appears wh
 
 | Capability | Behavior |
 | --- | --- |
-| Prompt guidance | `ctx.systemPrompt.section()` advertises the supported IUI syntax. |
-| Message rendering | The `assistant-step` slot projects text blocks through OIUI's existing `parseReplyParts`, `Runtime`, and `UIRenderer`; plain text uses DSH's `MarkdownText`. |
+| Prompt guidance | A live Host setting controls whether `ctx.systemPrompt.section()` contributes IUI syntax on each prompt assembly. |
+| Message rendering | When enabled, the `assistant-step` slot projects text blocks through OIUI's existing `parseReplyParts`, `Runtime`, and `UIRenderer`; when disabled, every text block uses DSH's `MarkdownText`. |
 | Streaming | Valid IUI prefixes preview during streaming. The same runtime persists across subsequent text updates so local `DIL.useState` survives. An incomplete suffix keeps the last valid prefix. |
 | Interaction state | Local controls such as button, slider, and input use the OIUI runtime. |
 | Send back to conversation | Not provided. This integration does not configure `GenUI.issueNewTurn`, `GenUI.copy`, or another host action. |

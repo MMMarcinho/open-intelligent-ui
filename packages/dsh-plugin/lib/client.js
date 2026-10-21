@@ -7659,7 +7659,13 @@ var styles_default = "/* Component styles: import from open-intelligent-ui/style
 
 // packages/dsh-plugin/src/client.tsx
 var import_jsx_runtime54 = require("react/jsx-runtime");
-var inject = ["slots"];
+var inject = ["slots", "configForms"];
+var namespace = "open-intelligent-ui";
+function useMode(form) {
+  const subscribe = (0, import_react8.useCallback)((listener) => form.subscribe(listener), [form]);
+  const snapshot = (0, import_react8.useCallback)(() => form.getSnapshot(), [form]);
+  return (0, import_react8.useSyncExternalStore)(subscribe, snapshot);
+}
 var labels = {
   code: { copyLabel: "Copy", copiedLabel: "Copied" },
   footnotes: "Footnotes"
@@ -7695,7 +7701,12 @@ function useDshThemeMode() {
   }, []);
   return mode;
 }
-function TextBlock({ text, messageId, streaming }) {
+function TextBlock({ text, messageId, streaming, enabled }) {
+  if (!enabled)
+    return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_dsh_client_ui_primitives.MarkdownText, { text, streaming, labels });
+  return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(IntelligentTextBlock, { text, messageId, streaming });
+}
+function IntelligentTextBlock({ text, messageId, streaming }) {
   const candidate = (0, import_react8.useMemo)(() => {
     try {
       return splitReply(text, messageId);
@@ -7736,7 +7747,7 @@ function TextBlock({ text, messageId, streaming }) {
     ready && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(UIRenderer, { runtime: runtime.current, targets: Array.from({ length: count }, (_, index) => targets[index]), themeMode: mode })
   ] });
 }
-function AssistantNode({ node, groupPart, renderMessageImages }) {
+function AssistantNode({ node, groupPart, renderMessageImages, enabled }) {
   const { blocks, status } = node.data;
   const streaming = status === "running";
   const showReasoning = groupPart !== "response";
@@ -7751,7 +7762,7 @@ function AssistantNode({ node, groupPart, renderMessageImages }) {
       if (!showResponse)
         return null;
       if (block.kind === "text")
-        return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextBlock, { text: block.text, messageId: `${node.key}:${index}`, streaming }, index);
+        return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextBlock, { text: block.text, messageId: `${node.key}:${index}`, streaming, enabled }, index);
       if (block.kind === "image")
         return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_react8.default.Fragment, { children: renderMessageImages({ images: [{ attachment: block.attachment }], align: "start" }) }, index);
       if (block.kind === "tool-call")
@@ -7761,12 +7772,61 @@ function AssistantNode({ node, groupPart, renderMessageImages }) {
     status === "interrupted" && showResponse && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { "data-iui-dsh-interrupted": "", children: "Stopped" })
   ] });
 }
+function ModeButton({ form }) {
+  const state = useMode(form);
+  const enabled = state.status === "ready" && state.value?.enabled === true;
+  const [pending, setPending] = (0, import_react8.useState)(false);
+  const [error, setError] = (0, import_react8.useState)(false);
+  const available = state.status === "ready" && state.writable && state.mode === "host";
+  const toggle = async () => {
+    if (!available || pending)
+      return;
+    setPending(true);
+    setError(false);
+    try {
+      if (!await form.set("enabled", !enabled))
+        setError(true);
+    } catch {
+      setError(true);
+    } finally {
+      setPending(false);
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+    import_dsh_client_ui_primitives.Button,
+    {
+      type: "button",
+      variant: "toolbar",
+      size: "sm",
+      "data-iui-dsh-toggle": "",
+      "aria-label": "\u667A\u80FD UI",
+      "aria-pressed": enabled,
+      title: error ? "\u667A\u80FD UI \u8BBE\u7F6E\u4FDD\u5B58\u5931\u8D25" : enabled ? "\u667A\u80FD UI \u5DF2\u5F00\u542F" : "\u667A\u80FD UI \u5DF2\u5173\u95ED",
+      disabled: !available || pending,
+      onClick: () => {
+        void toggle();
+      },
+      style: enabled ? { background: "var(--dsw-alias-state-business-tertiary)", color: "var(--dsw-alias-state-business-primary)" } : void 0,
+      children: "\u667A\u80FD UI"
+    }
+  );
+}
 function apply(ctx) {
+  const form = ctx.configForms.get(namespace);
+  function AssistantWithMode(props) {
+    const state = useMode(form);
+    return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(AssistantNode, { ...props, enabled: state.status === "ready" && state.value?.enabled === true });
+  }
   ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
     name: "conversation.chat.node",
     key: "assistant-step",
     locale: "chat"
-  }, AssistantNode));
+  }, AssistantWithMode));
+  ctx.slots.inject("conversation.input.left", () => ctx.slots.register({
+    name: "conversation.input.left",
+    id: "open-intelligent-ui",
+    order: 30
+  }, () => /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ModeButton, { form })));
 }
 
     return module.exports;
