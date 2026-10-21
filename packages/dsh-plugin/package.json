@@ -25,7 +25,7 @@
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
       "platform": "web",
-      "inject": ["@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-renderer"],
+      "inject": ["@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-renderer", "@deepseek-ai/dsh-client-ui-settings"],
       "external": ["@deepseek-ai/dsh-client-ui-primitives"]
     }
   },
