@@ -1,1 +1,11 @@
 [data-iui-original-hidden]{display:none!important}
+[data-iui-layout-source-hidden]{display:none!important}
+/* Geometry, colors, hover and selected state come from the neighboring native ds-toggle-button. */
+[data-iui-layout-toggle]{appearance:none;margin:0;box-sizing:border-box;flex-shrink:0}
+[data-iui-layout-toggle]:disabled{cursor:help}
+[data-iui-layout-toggle] svg{display:block}
+[data-iui-layout-history]{white-space:normal;overflow-wrap:anywhere}
+[data-iui-layout-original]{white-space:pre-wrap}
+[data-iui-layout-history] details{margin-top:8px;font-size:12px;opacity:.8}
+[data-iui-layout-history] summary{cursor:pointer;user-select:none}
+[data-iui-layout-history] pre{white-space:pre-wrap;max-height:360px;overflow:auto;padding:8px;border:1px solid #aaa5;border-radius:8px;font:inherit;user-select:text}

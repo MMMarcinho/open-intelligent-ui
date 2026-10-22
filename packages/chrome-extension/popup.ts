@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, normalizeSettings, selectPageAdapter, urlMatchesPattern, validateUrlRule, type ExtensionSettings } from '../../services/extension-rules.js';
 
+import { updateExtensionEnabled } from '../../services/extension-mode.js';
 export {};
 declare const chrome: any;
 
@@ -43,8 +44,9 @@ async function refreshPageStatus(): Promise<void> {
     }
   }
   try {
-    const status = await chrome.tabs.sendMessage(tab.id, { type: 'iui-status' }) as { enabled?: boolean; siteId?: string | null };
-    setPageStatus(status.enabled && status.siteId === adapter ? '已启用' : '等待页面加载', status.enabled && status.siteId === adapter ? 'success' : 'warning');
+    const status = await chrome.tabs.sendMessage(tab.id, { type: 'iui-status' }) as { enabled?: boolean; siteId?: string | null; injection?: {available?:boolean} | null };
+    const injectionUnavailable = status.enabled && status.siteId === adapter && status.injection?.available === false;
+    setPageStatus(injectionUnavailable ? '已开启，发送桥未就绪' : status.enabled && status.siteId === adapter ? '已启用' : '等待页面加载', !injectionUnavailable && status.enabled && status.siteId === adapter ? 'success' : 'warning');
   } catch { setPageStatus('已配置，刷新后生效', 'warning'); }
 }
 
@@ -63,10 +65,7 @@ toggle.addEventListener('change', () => {
     showError('');
     try {
       // Read again before writing so this quick switch preserves edits made in Options.
-      const stored = await chrome.storage.local.get({ iuiSettings: null, enabled: true });
-      const next = normalizeSettings(stored.iuiSettings, stored.enabled);
-      next.enabled = desired;
-      await chrome.storage.local.set({ iuiSettings: next });
+      const next = await updateExtensionEnabled(chrome.storage.local, desired);
       settings = next;
       try {
         const tab = (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
