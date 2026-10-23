@@ -25,6 +25,9 @@ test('host prompt includes IUI guidance only while the live mode is enabled', as
   assert.equal(section.text(), '');
   enabled = true;
   assert.match(section.text(), /DIL\.useState/);
+  assert.match(section.text(), /AsyncImageGroup/);
+  assert.match(section.text(), /no image search/i);
+  assert.doesNotMatch(section.text(), /Do not generate AppBlock, AsyncImage/);
   enabled = false;
   assert.equal(section.text(), '');
 });
@@ -47,12 +50,14 @@ test('browser composer mode controls rendering and persists across assistant upd
     document: globalThis.document,
     MutationObserver: globalThis.MutationObserver,
     navigator: globalThis.navigator,
+    IS_REACT_ACT_ENVIRONMENT: (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT,
   };
   Object.assign(globalThis, {
     window: dom.window,
     document: dom.window.document,
     MutationObserver: dom.window.MutationObserver,
     navigator: dom.window.navigator,
+    IS_REACT_ACT_ENVIRONMENT: true,
   });
   try {
     let entry: { id: string; factory: (require: (name: string) => unknown) => { apply: (ctx: unknown) => void } } | undefined;
@@ -121,6 +126,38 @@ test('browser composer mode controls rendering and persists across assistant upd
     }))));
     assert.match(shadow.textContent ?? '', /1/);
     assert.equal(mount.querySelector<HTMLButtonElement>('[data-iui-dsh-toggle]')?.getAttribute('aria-pressed'), 'true');
+    const carousel = '<box><AsyncImageGroup query={["images/first.png","images/second.png"]} layout="carousel"/></box>';
+    const loadImage = async () => '';
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
+      node: { ...node, data: { ...node.data, blocks: [{ kind: 'text', text: carousel }] } }, cwd: '/workspace', loadImage, renderMessageImages: () => null,
+    }))));
+    assert.equal(shadow.querySelector<HTMLImageElement>('.iui-image-carousel img')?.src, 'http://localhost/api/file?path=%2Fworkspace%2Fimages%2Ffirst.png');
+    await act(async () => shadow.querySelector<HTMLButtonElement>('[aria-label="下一张图片"]')!.click());
+    assert.equal(shadow.querySelector<HTMLImageElement>('.iui-image-carousel img')?.src, 'http://localhost/api/file?path=%2Fworkspace%2Fimages%2Fsecond.png');
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
+      node: { ...node, data: { ...node.data, blocks: [{ kind: 'text', text: `${carousel}\nDone` }] } }, cwd: '/workspace', loadImage, renderMessageImages: () => null,
+    }))));
+    assert.match(shadow.querySelector('.iui-image-controls')?.textContent ?? '', /2 \/ 2/);
+    await act(async () => shadow.querySelector<HTMLButtonElement>('[aria-label="上一张图片"]')!.click());
+    assert.equal(shadow.querySelector<HTMLImageElement>('.iui-image-carousel img')?.src, 'http://localhost/api/file?path=%2Fworkspace%2Fimages%2Ffirst.png');
+    const native = '<box><AsyncImage query="attachment:image-1"/></box>';
+    const nativeRef = { attachmentId: 'image-1', mediaType: 'image/png', bytes: 4, width: 10, height: 20, name: 'native.png' };
+    const nativeLoader = async () => 'blob:http://localhost/native';
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
+      node: { ...node, data: { ...node.data, blocks: [{ kind: 'text', text: native }, { kind: 'image', attachment: nativeRef }] } },
+      cwd: '/workspace', loadImage: nativeLoader, renderMessageImages: () => null,
+    }))));
+    assert.equal(shadow.querySelector<HTMLImageElement>('img')?.src, 'blob:http://localhost/native');
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
+      node: { ...node, key: 'reply-2', data: { ...node.data, blocks: [{ kind: 'text', text: native }] } },
+      cwd: '/workspace', loadImage: nativeLoader, renderMessageImages: () => null,
+    }))));
+    assert.equal(shadow.querySelector('img'), null);
+    await act(async () => root.render(React.createElement(React.StrictMode, null, React.createElement(button!), React.createElement(renderer!, {
+      node: { ...node, key: 'reply-2', data: { ...node.data, blocks: [{ kind: 'text', text: native }, { kind: 'image', attachment: nativeRef }] } },
+      cwd: '/workspace', loadImage: nativeLoader, renderMessageImages: () => null,
+    }))));
+    assert.equal(shadow.querySelector<HTMLImageElement>('img')?.src, 'blob:http://localhost/native');
     await act(async () => mount.querySelector<HTMLButtonElement>('[data-iui-dsh-toggle]')!.click());
     assert.equal(mount.querySelector('[data-iui-dsh-root]'), null);
     assert.match(mount.textContent ?? '', /<box>/);
