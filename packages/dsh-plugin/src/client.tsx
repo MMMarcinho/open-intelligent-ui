@@ -1,7 +1,7 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Button, MarkdownText, type MarkdownLabels } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { Context } from '@deepseek-ai/cordis';
-import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-chat/client';
+import type { AssistantBlock, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-chat/client';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client';
@@ -108,7 +108,7 @@ function AssistantNode({ node, groupPart, renderMessageImages, enabled }: ChatNo
   const showReasoning = groupPart !== 'response';
   const showResponse = groupPart !== 'reasoning';
   return <div data-iui-dsh-assistant="" data-streaming={streaming || undefined}>
-    {blocks.map((block, index) => {
+    {blocks.map((block: AssistantBlock, index: number) => {
       if (block.kind === 'reasoning') return showReasoning && block.text.trim()
         ? <details key={index} data-iui-dsh-reasoning=""><summary>Thinking</summary><MarkdownText text={block.text} streaming={streaming} labels={labels} /></details>
         : null;
