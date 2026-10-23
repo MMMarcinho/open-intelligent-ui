@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { parseDsl, StreamParser, Runtime, SafeEvaluator, safeUrl, validateDocument, registry } from '../protocol';
 import { mergeTheme, themes } from '../ui/theme';
+const {UIRenderer}=await import(new URL('../dist/lib/packages/react-ui/index.js',import.meta.url).href);
 const calculator=readFileSync(new URL('./fixtures/calculator.sample.iui.txt',import.meta.url),'utf8');
 const form=readFileSync(new URL('./fixtures/form.sample.iui.txt',import.meta.url),'utf8');
 const chart=readFileSync(new URL('./fixtures/trend.sample.iui.txt',import.meta.url),'utf8');
@@ -42,6 +45,26 @@ test('表达式禁止全局、原型、构造器、赋值和无限资源',()=>{
   const e=new SafeEvaluator();for(const s of ['globalThis','window','({}).constructor','({})["__proto__"]','(()=>{}).constructor','new Function("return 1")','fetch("https://example.com")','a=1','[1,2].push(3)'])assert.throws(()=>e.evaluate(s),s);
   assert.throws(()=>e.evaluate('Array(1000000)'));
   assert.equal(e.evaluate('Math.max(2,4)'),4);
+});
+test('已声明的宿主同名局部变量可用于派生值、状态、循环和回调',async()=>{
+  const source='{@body const [top,setTop]=DIL.useState("reflex")}{@body const build=top==="reflex"?"Reflex":"Other"}<box><text>{build}</text>{#each ["loop"] as top}<text>{top}</text>{/each}</box>';
+  const document=parseDsl(source,'local-top');assert.equal(document.complete,true,JSON.stringify(document.diagnostics));
+  const runtime=new Runtime(document);assert.equal(runtime.scope().build,'Reflex');assert.deepEqual(runtime.feedback,[]);
+  const markup=renderToStaticMarkup(React.createElement(UIRenderer,{runtime}));assert.match(markup,/Reflex/);assert.match(markup,/loop/);
+  await runtime.event('()=>setTop(top=>top+"-next")');assert.equal(runtime.scope().top,'reflex-next');assert.equal(runtime.scope().build,'Other');
+  const derived=new Runtime(parseDsl('{@body const top="local"}{@body const build=top}<text>{build}</text>','derived-top'));
+  assert.equal(derived.scope().build,'local');
+  const evaluator=new SafeEvaluator();assert.deepEqual(evaluator.evaluate('["a"].map(top=>top.toString())'),['a']);
+  for(const name of ['top','parent','window','globalThis','document','self'])assert.equal(evaluator.evaluate(name,{[name]:'local'}),'local');
+});
+test('未声明的宿主名及任意危险成员仍被阻断',()=>{
+  const evaluator=new SafeEvaluator();
+  for(const name of ['top','parent','window','globalThis','document','self'])assert.throws(()=>evaluator.evaluate(name),/blocked identifier/);
+  for(const name of ['constructor','prototype','__proto__','Function','eval','fetch'])assert.throws(()=>evaluator.evaluate(name,{[name]:'local'}),/blocked identifier/);
+  for(const expression of ['value.top','value["parent"]','window.top','value.constructor','value["__proto__"]'])assert.throws(()=>evaluator.evaluate(expression,{value:{top:'x',parent:'x'},window:{top:'x'}}),/blocked property/);
+  assert.throws(()=>evaluator.evaluate('[1].map(x=>top)'),/blocked identifier: top/);
+  const forward=new Runtime(parseDsl('{@body const build=top}{@body const top="local"}<text>{build}</text>','forward'));
+  assert.equal(forward.scope().build,undefined);assert.match(forward.feedback[0],/blocked identifier: top/);
 });
 test('危险 URL 与任意 SVG 不进入可执行路径',()=>{
   for(const x of ['javascript:alert(1)','data:image/svg+xml,<svg onload=alert(1)>','blob:abc','/relative'])assert.equal(safeUrl(x),null);

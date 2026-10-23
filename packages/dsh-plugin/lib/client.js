@@ -6150,6 +6150,7 @@ function parseExpressionAt2(input, pos, options) {
 
 // protocol/runtime.ts
 var forbidden = /* @__PURE__ */ new Set(["__proto__", "prototype", "constructor", "caller", "callee", "arguments", "window", "globalThis", "document", "self", "top", "parent", "Function", "eval", "fetch", "XMLHttpRequest"]);
+var shadowableHostGlobals = /* @__PURE__ */ new Set(["window", "globalThis", "document", "self", "top", "parent"]);
 function keyOf(value) {
   const key = String(value);
   if (forbidden.has(key))
@@ -6231,10 +6232,12 @@ var SafeEvaluator = class {
     switch (n.type) {
       case "Literal":
         return n.value;
-      case "Identifier":
-        if (forbidden.has(n.name))
+      case "Identifier": {
+        const local2 = Object.prototype.hasOwnProperty.call(env, n.name);
+        if (forbidden.has(n.name) && (!local2 || !shadowableHostGlobals.has(n.name)))
           throw new Error(`blocked identifier: ${n.name}`);
-        return Object.prototype.hasOwnProperty.call(env, n.name) ? env[n.name] : void 0;
+        return local2 ? env[n.name] : void 0;
+      }
       case "ArrayExpression": {
         if (n.elements.length > limits.arrayItems)
           throw new Error("array budget exceeded");

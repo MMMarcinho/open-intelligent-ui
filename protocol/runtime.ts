@@ -7,6 +7,9 @@ type Closure = { $closure: true; node: any; env: Env };
 type Setter = { $setter: string };
 type Action = { $action: 'copy' | 'issueNewTurn' };
 const forbidden = new Set(['__proto__','prototype','constructor','caller','callee','arguments','window','globalThis','document','self','top','parent','Function','eval','fetch','XMLHttpRequest']);
+// Host global names may also be ordinary DSL bindings. Only an own scope entry can shadow one;
+// property access and prototype-related names remain forbidden regardless of the scope.
+const shadowableHostGlobals = new Set(['window','globalThis','document','self','top','parent']);
 function keyOf(value:unknown):string {const key=String(value);if(forbidden.has(key))throw new Error(`blocked property: ${key}`);return key;}
 function own(obj:unknown,key:string):unknown {if(obj==null)return undefined;if(typeof obj==='string'){if(key==='length')return obj.length;if(/^\d+$/.test(key))return obj[Number(key)];return undefined;}if(Array.isArray(obj)){if(key==='length')return obj.length;if(/^\d+$/.test(key))return obj[Number(key)];return undefined;}if(typeof obj==='object'&&Object.prototype.hasOwnProperty.call(obj,key))return (obj as Env)[key];return undefined;}
 const finite=(x:unknown)=>{const n=Number(x);return Number.isFinite(n)?n:0;};
@@ -23,7 +26,7 @@ export class SafeEvaluator {
     const go=(x:any)=>this.run(x,env,depth+1);
     switch(n.type){
       case 'Literal':return n.value;
-      case 'Identifier':if(forbidden.has(n.name))throw new Error(`blocked identifier: ${n.name}`);return Object.prototype.hasOwnProperty.call(env,n.name)?env[n.name]:undefined;
+      case 'Identifier':{const local=Object.prototype.hasOwnProperty.call(env,n.name);if(forbidden.has(n.name)&&(!local||!shadowableHostGlobals.has(n.name)))throw new Error(`blocked identifier: ${n.name}`);return local?env[n.name]:undefined;}
       case 'ArrayExpression':{if(n.elements.length>limits.arrayItems)throw new Error('array budget exceeded');const out:unknown[]=[];for(const e of n.elements){if(!e){out.push(null);continue;}if(e.type==='SpreadElement'){const v=go(e.argument);if(!Array.isArray(v))throw new Error('array spread requires array');out.push(...v);}else out.push(go(e));}if(out.length>limits.arrayItems)throw new Error('array budget exceeded');return out;}
       case 'ObjectExpression':{const out:Env=Object.create(null);for(const p of n.properties){if(p.type==='SpreadElement'){const v=go(p.argument);if(!v||typeof v!=='object'||Array.isArray(v))throw new Error('object spread requires object');for(const [k,x] of Object.entries(v))out[keyOf(k)]=x;continue;}if(p.kind!=='init'||p.method)throw new Error('object method forbidden');const k=keyOf(p.computed?go(p.key):(p.key.name??p.key.value));out[k]=go(p.value);}return out;}
       case 'UnaryExpression':{const v=go(n.argument);if(n.operator==='!')return !v;if(n.operator==='+')return +finite(v);if(n.operator==='-')return -finite(v);if(n.operator==='typeof')return typeof v;throw new Error('unary operator forbidden');}
