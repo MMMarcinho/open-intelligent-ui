@@ -6470,6 +6470,9 @@ var Runtime = class {
   eventNumber = 0;
   actionIds = /* @__PURE__ */ new Set();
   setters = /* @__PURE__ */ new Map();
+  setAdapter(adapter) {
+    this.adapter = adapter;
+  }
   note(message) {
     this.feedback.push(message);
     if (this.feedback.length > 20)
@@ -7126,12 +7129,18 @@ function AppBlock({ request, adapter }) {
 // ui/components/media/async-image/AsyncImage.tsx
 var import_react6 = require("react");
 var import_jsx_runtime51 = require("react/jsx-runtime");
-function safeImageSource(src) {
-  if (/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(src) && src.length <= 4e6)
+function safeImageSource(src, nativeAttachment = false) {
+  if (/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(src) && src.length <= 4e6)
     return src;
   try {
     const url = new URL(src);
-    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : null;
+    if (["https:", "http:"].includes(url.protocol) && !url.username && !url.password)
+      return url.href;
+    if (nativeAttachment && url.protocol === "blob:")
+      return url.href;
+    if (url.protocol === "dsh-app:" && url.hostname === "app" && !url.port && !url.username && !url.password && url.pathname === "/api/file" && url.searchParams.size === 1 && url.searchParams.has("path") && !url.hash)
+      return url.href;
+    return null;
   } catch {
     return null;
   }
@@ -7139,7 +7148,7 @@ function safeImageSource(src) {
 function imageFromValue(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return null;
-  const src = typeof value.src === "string" ? safeImageSource(value.src) : null;
+  const src = typeof value.src === "string" ? safeImageSource(value.src, value.nativeAttachment === true) : null;
   if (!src || typeof value.alt !== "string" || !value.alt.trim() || value.alt.length > 240)
     return null;
   const width = typeof value.width === "number" && Number.isFinite(value.width) && value.width > 0 ? value.width : void 0;
@@ -7192,7 +7201,7 @@ function AsyncImage({ query, aspectRatio, width, messageId, adapter }) {
         width: state.image.width,
         height: state.image.height,
         onLoad: () => setState((current2) => current2.image?.src === state.image?.src ? { ...current2, phase: "ready" } : current2),
-        onError: () => setState({ phase: "error", message: "\u56FE\u7247\u52A0\u8F7D\u5931\u8D25", image: state.image })
+        onError: () => setState((current2) => current2.image?.src === state.image?.src ? { phase: "error", message: "\u56FE\u7247\u52A0\u8F7D\u5931\u8D25", image: current2.image } : current2)
       }
     ),
     state.phase !== "ready" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("div", { className: "iui-image-status", role: "status", children: state.phase === "error" ? `${state.image?.alt ?? String(query ?? "")}\uFF1A${state.message}` : "\u56FE\u7247\u52A0\u8F7D\u4E2D\u2026" })
@@ -7657,6 +7666,132 @@ function splitReply(source, messageId) {
   return { document: parsed.document, segments };
 }
 
+// node_modules/@deepseek-ai/dsh-util-workspace-path/lib/index.js
+var FILE_ADDRESS_PREFIX = "dsh-resource://file/";
+function isDriveSegment(segment) {
+  return segment !== void 0 && /^[A-Za-z]:$/.test(segment);
+}
+function parseFileAddress(address) {
+  try {
+    if (!address.startsWith(FILE_ADDRESS_PREFIX))
+      return void 0;
+    const end = address.search(/[?#]/);
+    const [scope, ...rest] = address.slice(20, end === -1 ? void 0 : end).split("/");
+    if (scope === "session") {
+      const [id, ...segments] = rest;
+      if (id === void 0 || id === "" || segments.length === 0)
+        return void 0;
+      return {
+        scope,
+        sessionId: decodeURIComponent(id),
+        path: segments.map(decodeURIComponent).join("/")
+      };
+    }
+    if (scope === "absolute") {
+      const unc = rest[0] === "" && rest.length > 1;
+      const segments = (unc ? rest.slice(1) : rest).map(decodeURIComponent);
+      if (segments.length === 0 || segments[0] === "")
+        return void 0;
+      if (unc)
+        return {
+          scope,
+          path: `//${segments.join("/")}`
+        };
+      return {
+        scope,
+        path: isDriveSegment(segments[0]) ? segments.join("/") : `/${segments.join("/")}`
+      };
+    }
+    return;
+  } catch {
+    return;
+  }
+}
+function isWindowsStylePath(value) {
+  return /^[A-Za-z]:[/\\]/.test(value) || value.startsWith("\\\\");
+}
+function isAbsoluteWorkspacePath(path) {
+  return path.startsWith("/") || isWindowsStylePath(path);
+}
+function resolveWorkspacePath(cwd, path) {
+  if (isAbsoluteWorkspacePath(path))
+    return path;
+  if (cwd === void 0 || cwd === "")
+    return path;
+  const separator = isWindowsStylePath(cwd) && cwd.includes("\\") ? "\\" : "/";
+  return `${cwd.replace(/[/\\]+$/, "")}${separator}${path.replace(/^[/\\]+/, "")}`;
+}
+function fileMediaUrl(base, path) {
+  if (!/^https?:/u.test(base) && !base.startsWith("dsh-app://app/") || !isAbsoluteWorkspacePath(path) || /^[/\\]{2}/u.test(path) || /[\u0000-\u001f\u007f]/u.test(path))
+    return void 0;
+  return new URL(`api/file?path=${encodeURIComponent(path)}`, base).href;
+}
+
+// packages/dsh-plugin/src/media.ts
+var rasterFile = /\.(?:png|jpe?g|webp|gif)(?:[?#]|$)/iu;
+var invalidPath = /^[\\/]{2}|[\u0000-\u001f\u007f]/u;
+var scheme = /^[a-z][a-z0-9+.-]*:/iu;
+var drive = /^[a-z]:[\\/]/iu;
+function imageLabel(query) {
+  return query.split(/[?#]/u)[0].split(/[\\/]/u).at(-1)?.slice(0, 240) || "\u56FE\u7247";
+}
+function resolved(src, alt, attachment) {
+  const value = { src, alt };
+  if (attachment) {
+    value.nativeAttachment = true;
+    if (typeof attachment.width === "number" && Number.isFinite(attachment.width))
+      value.width = attachment.width;
+    if (typeof attachment.height === "number" && Number.isFinite(attachment.height))
+      value.height = attachment.height;
+  }
+  return { ok: true, value };
+}
+function createDshMediaAdapter({ base, cwd, messageId, attachments, loadImage }) {
+  const currentImages = new Map(attachments.map((attachment) => [String(attachment.attachmentId), attachment]));
+  return { async resolveResource(request) {
+    if (request.kind !== "AsyncImage" || request.messageId !== messageId || typeof request.query !== "string" || !request.query.trim())
+      return { ok: false, message: "\u56FE\u7247\u9700\u8981\u5F53\u524D\u6D88\u606F\u4E2D\u7684\u660E\u786E\u8DEF\u5F84\u6216\u5F15\u7528" };
+    const query = request.query.trim();
+    if (query.startsWith("attachment:")) {
+      const attachment = currentImages.get(query.slice("attachment:".length));
+      if (!attachment)
+        return { ok: false, message: "\u5F53\u524D\u6D88\u606F\u6CA1\u6709\u8BE5\u56FE\u7247\u9644\u4EF6" };
+      try {
+        const src2 = await loadImage(attachment);
+        return resolved(src2, String(attachment.name || "\u56FE\u7247\u9644\u4EF6").slice(0, 240), attachment);
+      } catch {
+        return { ok: false, message: "\u56FE\u7247\u9644\u4EF6\u4E0D\u53EF\u7528" };
+      }
+    }
+    if (/^https?:\/\//iu.test(query)) {
+      try {
+        const url = new URL(query);
+        if (!url.username && !url.password)
+          return resolved(url.href, imageLabel(query));
+      } catch {
+      }
+      return { ok: false, message: "\u56FE\u7247 URL \u65E0\u6548" };
+    }
+    let path = query;
+    if (query.startsWith("dsh-resource:")) {
+      const address = parseFileAddress(query);
+      if (!address || address.scope !== "absolute")
+        return { ok: false, message: "\u56FE\u7247\u6587\u4EF6\u5F15\u7528\u65E0\u6CD5\u5728\u5F53\u524D\u4F1A\u8BDD\u9A8C\u8BC1" };
+      path = address.path;
+    } else {
+      try {
+        path = decodeURIComponent(query.split(/[?#]/u)[0] || "");
+      } catch {
+        return { ok: false, message: "\u56FE\u7247\u8DEF\u5F84\u7F16\u7801\u65E0\u6548" };
+      }
+    }
+    if (!path || invalidPath.test(path) || scheme.test(path) && !drive.test(path) || !rasterFile.test(path))
+      return { ok: false, message: "\u8BF7\u63D0\u4F9B PNG\u3001JPEG\u3001WebP \u6216 GIF \u6587\u4EF6\u8DEF\u5F84\uFF1B\u672A\u63A5\u5165\u56FE\u7247\u641C\u7D22" };
+    const src = fileMediaUrl(base, resolveWorkspacePath(cwd, path));
+    return src ? resolved(src, imageLabel(path)) : { ok: false, message: "\u56FE\u7247\u8DEF\u5F84\u65E0\u6CD5\u89E3\u6790\uFF0C\u6216\u4F1A\u8BDD\u5DE5\u4F5C\u76EE\u5F55\u5C1A\u672A\u5C31\u7EEA" };
+  } };
+}
+
 // ui/styles.css
 var styles_default = "/* Component styles: import from open-intelligent-ui/styles.css alongside the React UI package. */\n.iui-theme{min-height:100vh;background:var(--iui-background);color:var(--iui-text);font-family:var(--iui-font)}\n.iui-root{font-size:14px;line-height:1.55;white-space:pre-wrap}.iui-box,.iui-col,.iui-card,.iui-grid-item,.iui-flow-item,.iui-WritingBlock,.iui-carousel-item{display:flex;flex-direction:column;gap:8px;min-width:0}.iui-row,.iui-flow{display:flex;align-items:center;gap:8px;min-width:0}.iui-grid{display:grid;gap:8px}.iui-card{border:1px solid var(--iui-border);border-radius:12px;padding:14px}.iui-title{font-size:19px;line-height:1.2;letter-spacing:-.025em;margin:0;font-weight:750}.iui-caption{color:var(--iui-text-muted);font-size:12px}.iui-badge{display:inline-flex;background:var(--iui-surface-muted);border-radius:99px;padding:3px 9px;font-size:11px;font-weight:700;white-space:nowrap}.iui-label{font-size:12px;font-weight:700;color:var(--iui-text-muted)}.iui-icon{display:inline-block;min-width:1em;text-align:center;color:var(--iui-primary)}.iui-divider{border:0;border-top:1px solid var(--iui-border);width:100%;margin:5px 0}.iui-field{border:1px solid var(--iui-border);border-radius:8px;padding:9px 11px;min-width:0;max-width:100%;background:var(--iui-surface);color:var(--iui-text-muted);outline:none}.iui-field:focus{border-color:var(--iui-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--iui-primary) 18%,transparent)}.iui-slider{width:100%;accent-color:var(--iui-primary)}.iui-check{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.iui-check input{accent-color:var(--iui-primary)}.iui-radio-group{display:flex;gap:12px;flex-wrap:wrap}.iui-radio-group.vertical{flex-direction:column}.iui-button,.iui-pressable{border:0;border-radius:8px;padding:9px 13px;background:var(--iui-primary);color:var(--iui-surface);font-weight:700;font-size:12px;text-align:left}.iui-pressable{background:transparent;color:inherit}.iui-pressable:hover{background:var(--iui-surface-muted)}.iui-segments{display:flex;border:1px solid var(--iui-border);border-radius:9px;padding:3px;gap:3px}.iui-segments button{border:0;background:transparent;padding:6px 10px;border-radius:6px;color:var(--iui-text-muted);font-size:11px;font-weight:700}.iui-segments button.active{color:var(--iui-text-muted);background:var(--iui-surface-muted)}.iui-table{display:table;width:100%;border-collapse:collapse}.iui-table-row{display:table-row}.iui-table-cell{display:table-cell;border-bottom:1px solid var(--iui-border);padding:8px}.iui-list{padding-left:24px}.iui-code{overflow:auto;background:var(--iui-surface-muted);border-radius:9px;padding:12px}.iui-popover{position:relative}.iui-popover summary{cursor:pointer;list-style:none}.iui-popover-content{position:relative;z-index:2;background:var(--iui-surface-muted);border:1px solid var(--iui-border);border-radius:10px;box-shadow:0 12px 25px var(--iui-shadow);padding:10px;margin-top:8px}.iui-carousel{display:flex;align-items:center;gap:8px}.iui-carousel>div{flex:1;min-width:0}.iui-carousel>button{border:1px solid var(--iui-border);background:var(--iui-background);border-radius:7px;font-size:20px;color:var(--iui-primary)}.iui-chart svg{width:100%;height:auto;display:block}.iui-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--iui-text-muted)}.iui-legend span{display:flex;align-items:center;gap:4px}.iui-legend i{width:8px;height:8px;border-radius:2px}.iui-unavailable{padding:12px;border:1px dashed var(--iui-border);border-radius:8px;background:var(--iui-surface-muted);color:var(--iui-text-muted);font-size:12px}.iui-error{color:var(--iui-danger)}\n.iui-card,.iui-field,.iui-button,.iui-pressable,.iui-badge{border-radius:var(--iui-radius)}\n.iui-root :disabled{cursor:not-allowed;opacity:.55}\n.iui-box,.iui-col,.iui-card,.iui-grid-item,.iui-flow-item,.iui-carousel-item{gap:var(--iui-spacing)}\n@media(max-width:850px){.iui-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}\n@media(max-width:480px){.iui-grid{grid-template-columns:1fr!important}.iui-row{flex-wrap:wrap}}\n.iui-button.iui-outline{background:transparent;color:var(--iui-primary);border:1px solid var(--iui-primary)}\n.iui-button.iui-ghost{background:transparent;color:var(--iui-primary)}\n.iui-button:hover:not(:disabled){filter:brightness(.95)}\n.iui-app-block{border:1px solid var(--iui-border);border-radius:13px;overflow:hidden;background:var(--iui-surface)}\n.iui-app-block-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid var(--iui-border)}\n.iui-app-block-head>div:first-child{display:flex;flex-direction:column;gap:2px}.iui-app-block-head strong{font-size:13px}.iui-app-block-head small{font-size:10px;color:var(--iui-text-muted)}\n.iui-app-block-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.iui-app-block-actions button{border:1px solid var(--iui-border);border-radius:7px;background:var(--iui-surface-muted);color:var(--iui-text);padding:6px 8px;font-size:10px;font-weight:700}.iui-app-block-actions button:first-child{background:var(--iui-primary);border-color:var(--iui-primary);color:var(--iui-surface)}.iui-app-block-actions button:disabled{opacity:.4;cursor:default}\n.iui-app-block-status{margin:0;padding:8px 12px;background:var(--iui-surface-muted);color:var(--iui-text-muted);font-size:10px}.iui-app-block-empty{padding:36px 18px;text-align:center;color:var(--iui-text-muted);font-size:12px}\n.iui-app-block iframe{display:block;width:100%;height:770px;border:0;background:#111b2a}.iui-app-block.is-paint iframe{height:440px}\n@media(max-width:520px){.iui-app-block-head{align-items:flex-start;flex-direction:column}.iui-app-block-actions{justify-content:flex-start}}\n.iui-async-image{position:relative;display:block;max-width:100%;min-height:120px;margin:0;overflow:hidden;border:1px solid var(--iui-border);border-radius:var(--iui-radius);background:var(--iui-surface-muted)}\n.iui-async-image img{display:block;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .18s ease}\n.iui-async-image[data-image-status=ready] img{opacity:1}\n.iui-image-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;color:var(--iui-text-muted);font-size:12px;background:var(--iui-surface-muted)}\n.iui-async-image[data-image-status=error] .iui-image-status{color:var(--iui-danger)}\n.iui-image-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n.iui-image-carousel{min-width:0}.iui-image-controls{display:flex;align-items:center;justify-content:center;gap:18px;padding:6px;color:var(--iui-text-muted);font-size:12px}\n.iui-image-controls button{border:1px solid var(--iui-border);background:var(--iui-surface);color:var(--iui-primary);border-radius:7px;min-width:30px;height:28px;cursor:pointer}\n@media(max-width:520px){.iui-image-group{grid-template-columns:1fr}}\n\n/* Default component language: measured from the user's static ChatGPT UI capture.\n   Theme tokens stay on ThemeProvider so Studio and Citrus share the same geometry. */\n.iui-theme{min-width:0;min-height:0}\n.iui-root{min-width:0;container-type:inline-size;color:var(--iui-text);font-size:16px;line-height:1.625;overflow-wrap:break-word}\n.iui-root,.iui-root *,.iui-root *::before,.iui-root *::after{box-sizing:border-box}\n.iui-root :where(button,input,textarea,select){font-family:inherit}\n.iui-root :disabled{opacity:.42;cursor:not-allowed}\n.iui-root :where(button,input,textarea,select,summary):focus-visible{\n  outline:2px solid var(--iui-info);outline-offset:2px\n}\n\n/* Type is led by the 16/26 body, 18/28 heading and 14px secondary text. */\n.iui-text{min-width:0}\n.iui-title{margin:0;color:var(--iui-text);font-size:18px;line-height:1.55;letter-spacing:-.01em;font-weight:600}\n.iui-caption{color:var(--iui-text-muted);font-size:14px;line-height:1.3;font-weight:400}\n.iui-label{color:var(--iui-text);font-size:14px;line-height:1.45;font-weight:500}\n.iui-badge{\n  display:inline-flex;align-items:center;min-height:20px;width:max-content;max-width:100%;\n  padding:1px 8px;border-radius:999px;background:color-mix(in srgb,currentColor 11%,transparent);\n  color:var(--iui-text-muted);font-size:12px;line-height:18px;font-weight:500;letter-spacing:.015em\n}\n.iui-icon{color:var(--iui-primary)}\n.iui-code{\n  max-width:100%;margin:0;padding:12px 14px;overflow:auto;white-space:pre-wrap;\n  border:1px solid var(--iui-border);border-radius:10px;background:var(--iui-surface-muted);\n  color:var(--iui-text);font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace\n}\n.iui-root :not(pre)>code{\n  padding:2px 5px;border-radius:5px;background:var(--iui-surface-muted);\n  font: .86em/1.45 ui-monospace,SFMono-Regular,Menlo,monospace\n}\n.iui-root a{color:var(--iui-text);text-decoration-color:var(--iui-text-muted);text-underline-offset:3px}\n.iui-root a:hover{text-decoration-color:currentColor}\n.iui-root blockquote{\n  margin:2px 0;padding:5px 0 5px 16px;border-left:3px solid var(--iui-border);\n  color:var(--iui-text-muted)\n}\n.iui-list{margin:0;padding-left:24px}\n.iui-list li{padding-left:2px}\n\n/* Structure uses an eight-pixel default gap; explicit DSL gaps use the 4px theme unit. */\n.iui-box,.iui-col,.iui-card,.iui-grid-item,.iui-flow-item,.iui-WritingBlock,.iui-carousel-item{\n  gap:calc(var(--iui-spacing) * 2);min-width:0\n}\n.iui-row,.iui-flow,.iui-grid{gap:calc(var(--iui-spacing) * 2);min-width:0}\n.iui-card{\n  padding:16px;border:1px solid var(--iui-border);\n  border-radius:calc(var(--iui-radius) + 8px);background:var(--iui-surface);\n  box-shadow:none\n}\n.iui-divider{margin:4px 0;border-top-color:var(--iui-border)}\n\n/* Native form controls keep their semantics while matching the captured 40px fields. */\n.iui-field{\n  min-width:0;min-height:40px;max-width:100%;padding:8px 14px;\n  border:1px solid var(--iui-border);border-radius:10px;background:var(--iui-surface);\n  color:var(--iui-text);font-size:16px;line-height:22px;box-shadow:none;\n  transition:border-color .15s ease,box-shadow .15s ease\n}\n.iui-field::placeholder{color:var(--iui-text-muted);opacity:.7}\n.iui-field:hover:not(:disabled){border-color:color-mix(in srgb,var(--iui-text) 24%,var(--iui-border))}\n.iui-field:focus{border-color:var(--iui-info);box-shadow:0 0 0 3px color-mix(in srgb,var(--iui-info) 12%,transparent)}\n.iui-root textarea.iui-field{min-height:64px;padding:10px 14px;line-height:1.5;resize:vertical}\n.iui-root select.iui-field{padding-right:28px}\n.iui-check{min-height:24px;gap:9px;color:var(--iui-text);font-size:16px;line-height:24px}\n.iui-check input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--iui-primary);cursor:pointer}\n.iui-radio-group{gap:12px 16px}\n.iui-radio-group.vertical{gap:8px}\n.iui-slider{display:block;width:100%;height:24px;margin:0;accent-color:var(--iui-primary);cursor:pointer}\n.iui-slider::-webkit-slider-runnable-track{height:8px;border-radius:999px;background:var(--iui-surface-tertiary)}\n.iui-slider::-webkit-slider-thumb{\n  appearance:none;width:20px;height:20px;margin-top:-6px;border:1px solid var(--iui-border);\n  border-radius:50%;background:var(--iui-surface);box-shadow:0 1px 3px #0000001c\n}\n.iui-slider:focus-visible{outline:2px solid var(--iui-info);outline-offset:3px;border-radius:999px}\n\n/* Buttons and selectable rows use quiet surfaces with a visible keyboard ring. */\n.iui-button{\n  display:inline-flex;align-items:center;justify-content:center;min-height:36px;max-width:100%;\n  padding:7px 16px;border:1px solid var(--iui-primary);border-radius:999px;\n  background:var(--iui-primary);color:var(--iui-surface);\n  font-size:14px;line-height:20px;font-weight:500;text-align:center;cursor:pointer;\n  transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease\n}\n.iui-button:hover:not(:disabled){filter:none;background:color-mix(in srgb,var(--iui-primary) 84%,var(--iui-surface))}\n.iui-button.iui-outline{border-color:var(--iui-border);background:var(--iui-surface);color:var(--iui-text)}\n.iui-button.iui-outline:hover:not(:disabled){background:var(--iui-surface-muted);border-color:var(--iui-text-muted)}\n.iui-button.iui-ghost{border-color:transparent;background:transparent;color:var(--iui-text)}\n.iui-button.iui-ghost:hover:not(:disabled){background:var(--iui-surface-muted)}\n.iui-pressable{\n  max-width:100%;padding:8px;border:0;border-radius:8px;background:transparent;\n  color:var(--iui-text);font-size:inherit;line-height:inherit;font-weight:inherit;\n  text-align:inherit;cursor:pointer;transition:background-color .15s ease\n}\n.iui-pressable:hover:not(:disabled){background:var(--iui-surface-muted)}\n.iui-segments{max-width:100%;gap:2px;padding:3px;border:0;border-radius:999px;background:var(--iui-surface-muted)}\n.iui-segments button{\n  min-height:30px;padding:5px 12px;border:0;border-radius:999px;background:transparent;\n  color:var(--iui-text-muted);font-size:14px;line-height:20px;font-weight:500;cursor:pointer\n}\n.iui-segments button:hover:not(:disabled){color:var(--iui-text);background:color-mix(in srgb,var(--iui-surface) 55%,transparent)}\n.iui-segments button.active{color:var(--iui-text);background:var(--iui-surface);box-shadow:0 1px 3px #00000014}\n\n/* Data and overlays rely on borders and spacing instead of deep shadows. */\n.iui-table{max-width:100%;border-collapse:collapse;font-size:14px;line-height:20px}\n.iui-table-cell{padding:10px 12px;border-bottom:1px solid var(--iui-border);vertical-align:top}\n.iui-table-cell:first-child{padding-left:0}\n.iui-table-cell:last-child{padding-right:0}\n.iui-popover summary{border-radius:8px}\n.iui-popover-content{\n  margin-top:8px;padding:12px;border:1px solid var(--iui-border);\n  border-radius:var(--iui-radius);background:var(--iui-surface);box-shadow:var(--iui-shadow)\n}\n.iui-carousel>button,.iui-image-controls button{\n  display:grid;place-items:center;min-width:32px;height:32px;border:1px solid var(--iui-border);\n  border-radius:50%;background:var(--iui-surface);color:var(--iui-text);cursor:pointer\n}\n.iui-carousel>button:hover:not(:disabled),.iui-image-controls button:hover:not(:disabled){background:var(--iui-surface-muted)}\n.iui-legend{font-size:12px;line-height:1.4}\n.iui-axis-label{color:var(--iui-text-muted);font-size:12px}\n.iui-unavailable{\n  padding:12px 14px;border:1px dashed var(--iui-border);border-radius:10px;\n  background:var(--iui-surface-muted);color:var(--iui-text-muted);font-size:14px;line-height:1.5\n}\n\n/* Media preserves the restricted host behavior while sharing the same surface. */\n.iui-app-block{border-radius:var(--iui-radius);box-shadow:none}\n.iui-app-block-head{padding:14px 16px}\n.iui-app-block-head strong{font-size:14px;font-weight:600}\n.iui-app-block-head small{font-size:12px}\n.iui-app-block-actions button{min-height:30px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:500}\n.iui-app-block-status{padding:9px 16px;font-size:12px}\n.iui-app-block-empty{font-size:14px}\n.iui-async-image{border-color:var(--iui-border);border-radius:var(--iui-radius);background:var(--iui-surface-muted)}\n.iui-image-status{font-size:14px}\n.iui-image-group{gap:calc(var(--iui-spacing) * 2)}\n\n@container (max-width:520px){\n  .iui-grid,.iui-image-group{grid-template-columns:1fr!important}\n  .iui-row{flex-wrap:wrap}\n}\n@media(max-width:480px){\n  .iui-root{font-size:16px}\n  .iui-segments{flex-wrap:wrap;border-radius:16px}\n  .iui-segments button{flex:1 1 auto}\n}\n";
 
@@ -7704,12 +7839,18 @@ function useDshThemeMode() {
   }, []);
   return mode;
 }
-function TextBlock({ text, messageId, streaming, enabled }) {
+function TextBlock({ text, messageId, streaming, enabled, cwd, attachments, loadImage }) {
   if (!enabled)
     return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_dsh_client_ui_primitives.MarkdownText, { text, streaming, labels });
-  return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(IntelligentTextBlock, { text, messageId, streaming });
+  return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(IntelligentTextBlock, { text, messageId, streaming, cwd, attachments, loadImage });
 }
-function IntelligentTextBlock({ text, messageId, streaming }) {
+function IntelligentTextBlock({ text, messageId, streaming, cwd, attachments, loadImage }) {
+  const base = document.baseURI;
+  const attachmentKey = attachments.map((attachment) => String(attachment.attachmentId)).join("");
+  const adapter = (0, import_react8.useMemo)(
+    () => createDshMediaAdapter({ base, cwd, messageId, attachments, loadImage }),
+    [base, cwd, messageId, loadImage, attachmentKey]
+  );
   const candidate = (0, import_react8.useMemo)(() => {
     try {
       return splitReply(text, messageId);
@@ -7739,8 +7880,9 @@ function IntelligentTextBlock({ text, messageId, streaming }) {
   if (!parsed)
     return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_dsh_client_ui_primitives.MarkdownText, { text, streaming, labels });
   if (!runtime.current || runtime.current.document.messageId !== messageId) {
-    runtime.current = new Runtime(parsed.document);
+    runtime.current = new Runtime(parsed.document, adapter);
   } else {
+    runtime.current.setAdapter(adapter);
     runtime.current.update(parsed.document);
   }
   const count = parsed.document.children.length;
@@ -7750,8 +7892,9 @@ function IntelligentTextBlock({ text, messageId, streaming }) {
     ready && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(UIRenderer, { runtime: runtime.current, targets: Array.from({ length: count }, (_, index) => targets[index]), themeMode: mode })
   ] });
 }
-function AssistantNode({ node, groupPart, renderMessageImages, enabled }) {
+function AssistantNode({ node, groupPart, renderMessageImages, loadImage, cwd, enabled }) {
   const { blocks, status } = node.data;
+  const attachments = blocks.filter((block) => block.kind === "image").map((block) => block.attachment);
   const streaming = status === "running";
   const showReasoning = groupPart !== "response";
   const showResponse = groupPart !== "reasoning";
@@ -7765,7 +7908,7 @@ function AssistantNode({ node, groupPart, renderMessageImages, enabled }) {
       if (!showResponse)
         return null;
       if (block.kind === "text")
-        return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextBlock, { text: block.text, messageId: `${node.key}:${index}`, streaming, enabled }, index);
+        return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextBlock, { text: block.text, messageId: `${node.key}:${index}`, streaming, enabled, cwd, attachments, loadImage }, index);
       if (block.kind === "image")
         return /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_react8.default.Fragment, { children: renderMessageImages({ images: [{ attachment: block.attachment }], align: "start" }) }, index);
       if (block.kind === "tool-call")

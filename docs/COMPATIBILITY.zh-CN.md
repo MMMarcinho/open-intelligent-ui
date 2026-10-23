@@ -13,7 +13,7 @@
 | 可视化 | `Chart` | 本地折线、柱、散点、饼图，最多 100 数据点、4 series；基础坐标/图例，无完整 Tooltip 或复杂轴配置。 |
 | 特殊内容 | `CodeBlock` | 本地代码原文展示；不执行 TSX 或 Mermaid。新增样本中的 `editable`、`interactive`、`model_previewable` 属性仅保留，不代表编辑器或预览能力已实现。 |
 | 特殊宿主块 | `WritingBlock` | 宿主。参考仅有名称；编辑与保存合同待定义，默认未配置。 |
-| 媒体与地理 | `AsyncImage`, `AsyncImageGroup`, `AsyncVideo`, `MapWidgetV2`, `favicon` | 前两者接入精确的本地项目素材映射，支持加载、失败、替代文本、比例和图片组；不按任意查询联网，尚非完整原宿主能力。其余默认未配置，不伪造地图或视频。 |
+| 媒体与地理 | `AsyncImage`, `AsyncImageGroup`, `AsyncVideo`, `MapWidgetV2`, `favicon` | 前两者支持加载、失败、替代文本、比例和图片组；图片来源由各宿主限定：DeepSeek 扩展只映射两个项目素材，DSH 插件支持明确的路径、HTTP(S) URL 与当前消息的原生图片引用，均不做图片搜索。其余默认未配置，不伪造地图或视频。 |
 | 数据与引用 | `Entity`, `Cite`, `Link`, `FollowUp`, `FileCite`, `FileNavList`, `MemoryCite` | 宿主。需实体/引用/文件标识与权限解析；默认未配置。 |
 | 特殊宿主块 | `AppBlock` | 本地受限宿主已实现：不递归保存 HTML/style/script，明确点击后，只有精确匹配两份已审阅样本才提供隔离 iframe；默认无授权或修改后不运行。`sandbox="allow-scripts"` 且无 `allow-same-origin`，CSP 拒网；停止/重启销毁并重建。样式是本项目适配，不声称还原 GPT 内部实现；无法严格限制恶意 CPU 循环。详见 [AppBlock 说明](APPBLOCK.zh-CN.md)。 |
 | 原始矢量 | `svg` | 未支持模型提供的 SVG。固定图标与 `Chart` 自行生成安全 SVG。 |

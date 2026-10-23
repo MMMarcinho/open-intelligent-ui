@@ -66,7 +66,8 @@ export class SafeEvaluator {
 }
 export class Runtime {
   readonly state=new Map<string,unknown>();readonly feedback:string[]=[];private eventNumber=0;private actionIds=new Set<string>();private setters=new Map<string,string>();
-  constructor(public document:Document,readonly adapter:HostAdapter={}){}
+  constructor(public document:Document,public adapter:HostAdapter={}){}
+  setAdapter(adapter:HostAdapter){this.adapter=adapter;}
   private note(message:string){this.feedback.push(message);if(this.feedback.length>20)this.feedback.shift();}
   update(document:Document){if(document.messageId!==this.document.messageId){this.state.clear();this.actionIds.clear();}this.document=document;this.setters.clear();}
   reset(){this.state.clear();this.feedback.length=0;this.actionIds.clear();}

@@ -7,17 +7,21 @@ type ImageResource = { src: string; alt: string; width?: number; height?: number
 type Props = { query: unknown; aspectRatio?: unknown; width?: unknown; messageId: string; adapter: HostAdapter };
 type State = { phase: 'resolving' | 'loading' | 'ready' | 'error'; image?: ImageResource; message?: string };
 
-function safeImageSource(src: string): string | null {
-  if (/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(src) && src.length <= 4_000_000) return src;
+function safeImageSource(src: string, nativeAttachment = false): string | null {
+  if (/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(src) && src.length <= 4_000_000) return src;
   try {
     const url = new URL(src);
-    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : null;
+    if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password) return url.href;
+    if (nativeAttachment && url.protocol === 'blob:') return url.href;
+    if (url.protocol === 'dsh-app:' && url.hostname === 'app' && !url.port && !url.username && !url.password &&
+      url.pathname === '/api/file' && url.searchParams.size === 1 && url.searchParams.has('path') && !url.hash) return url.href;
+    return null;
   } catch { return null; }
 }
 
 function imageFromValue(value: Value | undefined): ImageResource | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const src = typeof value.src === 'string' ? safeImageSource(value.src) : null;
+  const src = typeof value.src === 'string' ? safeImageSource(value.src, value.nativeAttachment === true) : null;
   if (!src || typeof value.alt !== 'string' || !value.alt.trim() || value.alt.length > 240) return null;
   const width = typeof value.width === 'number' && Number.isFinite(value.width) && value.width > 0 ? value.width : undefined;
   const height = typeof value.height === 'number' && Number.isFinite(value.height) && value.height > 0 ? value.height : undefined;
@@ -53,7 +57,7 @@ export function AsyncImage({ query, aspectRatio, width, messageId, adapter }: Pr
   return <figure className="iui-async-image" style={style} data-image-status={state.phase}>
     {state.image && <img src={state.image.src} alt={state.image.alt} width={state.image.width} height={state.image.height}
       onLoad={() => setState(current => current.image?.src === state.image?.src ? { ...current, phase: 'ready' } : current)}
-      onError={() => setState({ phase: 'error', message: '图片加载失败', image: state.image })} />}
+      onError={() => setState(current => current.image?.src === state.image?.src ? { phase: 'error', message: '图片加载失败', image: current.image } : current)} />}
     {state.phase !== 'ready' && <div className="iui-image-status" role="status">
       {state.phase === 'error' ? `${state.image?.alt ?? String(query ?? '')}：${state.message}` : '图片加载中…'}
     </div>}
