@@ -2,12 +2,14 @@ import React, { useCallback, useLayoutEffect, useMemo, useRef, useState, useSync
 import { Button, MarkdownText, type MarkdownLabels } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { Context } from '@deepseek-ai/cordis';
 import type { AssistantBlock, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-chat/client';
+import type { MessageImageLoader } from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client';
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client';
 import { Runtime } from '../../../protocol/index.js';
 import { UIRenderer } from '../../../ui/renderer/Renderer.js';
 import { splitReply } from './segments.js';
+import { createDshMediaAdapter } from './media.js';
 import styles from '../../../ui/styles.css';
 
 export const inject = ['slots', 'configForms'];
@@ -26,6 +28,7 @@ const labels: MarkdownLabels = {
 const shadowStyles = `${styles}\n:host{display:block;min-width:0}.iui-theme{min-height:0;background:transparent}.iui-root{white-space:normal}`;
 
 type TargetChange = (index: number, target: HTMLElement | null) => void;
+type ImageRef = Extract<AssistantBlock, { kind: 'image' }>['attachment'];
 
 function UiTarget({ index, onTarget }: { index: number; onTarget: TargetChange }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -59,13 +62,23 @@ function useDshThemeMode(): 'light' | 'dark' {
   return mode;
 }
 
-function TextBlock({ text, messageId, streaming, enabled }: { text: string; messageId: string; streaming: boolean; enabled: boolean }) {
+function TextBlock({ text, messageId, streaming, enabled, cwd, attachments, loadImage }: {
+  text: string; messageId: string; streaming: boolean; enabled: boolean; cwd?: string;
+  attachments: readonly ImageRef[]; loadImage: MessageImageLoader;
+}) {
   // Keep the original message in the host Markdown path while the mode is off.
   if (!enabled) return <MarkdownText text={text} streaming={streaming} labels={labels} />;
-  return <IntelligentTextBlock text={text} messageId={messageId} streaming={streaming} />;
+  return <IntelligentTextBlock text={text} messageId={messageId} streaming={streaming} cwd={cwd} attachments={attachments} loadImage={loadImage} />;
 }
 
-function IntelligentTextBlock({ text, messageId, streaming }: { text: string; messageId: string; streaming: boolean }) {
+function IntelligentTextBlock({ text, messageId, streaming, cwd, attachments, loadImage }: {
+  text: string; messageId: string; streaming: boolean; cwd?: string;
+  attachments: readonly ImageRef[]; loadImage: MessageImageLoader;
+}) {
+  const base = document.baseURI;
+  const attachmentKey = attachments.map(attachment => String(attachment.attachmentId)).join('\u001f');
+  const adapter = useMemo(() => createDshMediaAdapter({ base, cwd, messageId, attachments, loadImage }),
+    [base, cwd, messageId, loadImage, attachmentKey]);
   const candidate = useMemo(() => {
     try { return splitReply(text, messageId); } catch { return null; }
   }, [text, messageId]);
@@ -88,8 +101,9 @@ function IntelligentTextBlock({ text, messageId, streaming }: { text: string; me
 
   if (!parsed) return <MarkdownText text={text} streaming={streaming} labels={labels} />;
   if (!runtime.current || runtime.current.document.messageId !== messageId) {
-    runtime.current = new Runtime(parsed.document); // No chat, network, or script host actions.
+    runtime.current = new Runtime(parsed.document, adapter); // Resource lookup only; no chat or script host actions.
   } else {
+    runtime.current.setAdapter(adapter);
     runtime.current.update(parsed.document); // Preserves DIL.useState through stream revisions.
   }
   const count = parsed.document.children.length;
@@ -102,8 +116,9 @@ function IntelligentTextBlock({ text, messageId, streaming }: { text: string; me
   </>;
 }
 
-function AssistantNode({ node, groupPart, renderMessageImages, enabled }: ChatNodeViewProps<'assistant-step'> & Mode) {
+function AssistantNode({ node, groupPart, renderMessageImages, loadImage, cwd, enabled }: ChatNodeViewProps<'assistant-step'> & Mode) {
   const { blocks, status } = node.data;
+  const attachments = blocks.filter((block: AssistantBlock) => block.kind === 'image').map((block: Extract<AssistantBlock, { kind: 'image' }>) => block.attachment);
   const streaming = status === 'running';
   const showReasoning = groupPart !== 'response';
   const showResponse = groupPart !== 'reasoning';
@@ -113,7 +128,7 @@ function AssistantNode({ node, groupPart, renderMessageImages, enabled }: ChatNo
         ? <details key={index} data-iui-dsh-reasoning=""><summary>Thinking</summary><MarkdownText text={block.text} streaming={streaming} labels={labels} /></details>
         : null;
       if (!showResponse) return null;
-      if (block.kind === 'text') return <TextBlock key={index} text={block.text} messageId={`${node.key}:${index}`} streaming={streaming} enabled={enabled} />;
+      if (block.kind === 'text') return <TextBlock key={index} text={block.text} messageId={`${node.key}:${index}`} streaming={streaming} enabled={enabled} cwd={cwd} attachments={attachments} loadImage={loadImage} />;
       if (block.kind === 'image') return <React.Fragment key={index}>{renderMessageImages({ images: [{ attachment: block.attachment }], align: 'start' })}</React.Fragment>;
       if (block.kind === 'tool-call') return null; // Tool lifecycle has its own dsh node.
       return <pre key={index}>Unsupported assistant content block</pre>;
