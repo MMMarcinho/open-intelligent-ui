@@ -6187,6 +6187,7 @@ var bounded = (s) => {
     throw new Error("string budget exceeded");
   return s;
 };
+var booleanFilterPredicate = Symbol("IUI filter Boolean");
 var SafeEvaluator = class {
   constructor(hooks) {
     this.hooks = hooks;
@@ -6367,10 +6368,11 @@ var SafeEvaluator = class {
         return v;
       }
       case "CallExpression": {
-        const args = n.arguments.map((a) => {
+        const filterBoolean = n.callee.type === "MemberExpression" && !n.callee.computed && n.callee.property.name === "filter" && n.arguments.length === 1 && n.arguments[0].type === "Identifier" && n.arguments[0].name === "Boolean" && !Object.prototype.hasOwnProperty.call(env, "Boolean");
+        const args = n.arguments.map((a, i) => {
           if (a.type === "SpreadElement")
             throw new Error("call spread forbidden");
-          return go(a);
+          return filterBoolean && i === 0 ? booleanFilterPredicate : go(a);
         });
         if (n.callee.type === "Identifier") {
           const id = n.callee.name, v = env[id];
@@ -6424,6 +6426,8 @@ var SafeEvaluator = class {
             return bounded(obj.join(String(args[0] ?? ",")));
           if (key === "slice")
             return obj.slice(finite(args[0]), args[1] === void 0 ? void 0 : finite(args[1]));
+          if (key === "filter" && args[0] === booleanFilterPredicate)
+            return obj.slice(0, limits.arrayItems).filter(Boolean);
           if (["map", "filter", "find", "sort"].includes(key)) {
             const fn = args[0];
             if (!fn || typeof fn !== "object" || !("$closure" in fn))
@@ -7522,6 +7526,8 @@ function referencesReady(source, available) {
       return true;
     if (Array.isArray(node))
       return node.every((child) => visit(child, names));
+    if (node.type === "CallExpression" && node.callee?.type === "MemberExpression" && !node.callee.computed && node.callee.property.name === "filter" && node.arguments?.length === 1 && node.arguments[0].type === "Identifier" && node.arguments[0].name === "Boolean" && !names.has("Boolean"))
+      return visit(node.callee.object, names);
     if (node.type === "Identifier")
       return names.has(node.name);
     if (node.type === "Literal" || node.type === "TemplateElement")
